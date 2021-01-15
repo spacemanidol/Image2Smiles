@@ -13,14 +13,16 @@ mol_object = featurizer.featurize(mols=molecules)
 """
 
 def main(args):
+    count = 0
     with open(args.input_file,'r') as f:
-        with open(os.path.join(args.output_folder,args.input_file)) as w:
+        with open(os.path.join(args.output_folder,'labels.smi'),'w') as w:
             for l in f:
                 l = l.strip()
                 m = Chem.MolFromSmiles(l)
                 if m != None:
-                    Draw.MolToFile(m,os.path.join(args.output_folder, '{}.png'.format(l)))
-                    w.write("{}\n".format(l))
+                    Draw.MolToFile(m,os.path.join(args.output_folder, '{}.png'.format(count)))
+                    w.write("{}\t{}\n".format(l,count))
+                    count += 1
 
 
 if __name__ == '__main__':
@@ -30,3 +32,4 @@ if __name__ == '__main__':
     parser.add_argument('--smiles', action='store_true', help='diversify images produces')
     parser.add_argument('--diversify', action='store_true', help='diversify images produces')
     args = parser.parse_args()
+    main(args)
