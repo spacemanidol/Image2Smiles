@@ -7,7 +7,9 @@ conda install -c conda-forge rdkit deepchem==2.3.0
 pip install tensorflow-gpu==1.14
 
 # Data
-Data comes from a bunch of repos everywhere
+Data is the collection of a bunch of different SMILES molecules
+
+[Validation Set](https://spacemanidol.blob.core.windows.net/blob/valitation.tar.gz)
 
 
 
