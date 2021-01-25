@@ -1,43 +1,89 @@
-import torch
-import torch.nn.functional as F
-import numpy as np
-import json
-import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import skimage.transform
+import os
 import argparse
-from scipy.misc import imread, imresize
-from PIL import Image
+from tqdm import tqdm
+
+from encoders import Resnet101Encoder
+
+from tokenizers.decoders import ByteLevel as ByteLevelDecoder
+from tokenizers.models import BPE
+from tokenizers.normalizers import Lowercase, NFKC, Sequence
+from tokenizers.pre_tokenizers import ByteLevel
+from tokenizers.trainers import BpeTrainer
+from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, processors
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Show, Attend, and Tell - Tutorial - Generate Caption')
-
-    parser.add_argument('--img', '-i', help='path to image')
-    parser.add_argument('--model', '-m', help='path to model')
-    parser.add_argument('--word_map', '-wm', help='path to word map JSON')
-    parser.add_argument('--beam_size', '-b', default=5, type=int, help='beam size for beam search')
-    parser.add_argument('--dont_smooth', dest='smooth', action='store_false', help='do not smooth alpha overlay')
-
+    parser = argparse.ArgumentParser(description='Predict Smiles Given an input image')
+    parser.add_argument('--image', type=str, help='path to image')
+    parser.add_argument('--predict_whole_directory', action='store_true', help='image path is a directory and predict all molecules.')
+    parser.add_argument('--encoder_type', type=str, default='Resnet101Encoder', help='Architecture used for the encoder')
+    parser.add_argument('--tokenizer', type=str, help='tokenizer name in the folder tokenizers/')
+    parser.add_argument('--model', help='model path')
+    parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')
+    parser.add_argument('--beam_size', default=5, type=int, help='beam size for prediction creation')
+    parser.add_argument('--output_dir', type=str, default='output.txt', help='file name to produce model predictions for each image.')
+    parser.add_argument('--cuda', action='store_true', help='Use cuda')
     args = parser.parse_args()
 
-    # Load model
-    checkpoint = torch.load(args.model, map_location=str(device))
-    decoder = checkpoint['decoder']
+    # Load Tokenizer
+    print("Loading Tokenizer: {}.".format(args.tokenizer))
+    tokenizer = Tokenizer.from_file(os.path.join('tokenizers',args.tokenizer_name))
+    print("Testing with SMILES String: {}".format(args.test_string))
+    encoding = tokenizer.encode(args.test_string)
+    print("Encoded string: {}".format(encoding.tokens))
+    decoded = tokenizer.decode(encoding.ids)
+    print("Decoded string: {}".format(decoded))
+    print("Tokenizer Loaded.")
+
+    # Load Model File
+    print("Loading models: {}".format(args.model))
+    checkpoint = torch.load(args.model)
+    # Load encoder
+    if args.encoder_type == 'Resnet101Encoder':
+        encoder = Resnet101Encoder()
+        encoder.load_state_dict(checkpoint['encoder'])
+    else:
+        print("No other encoders implemented yet.")
+        exit(0)
+
+    # Load Decoder
+    
+    # Deal With CUDA
+
+    if args.cuda:
+        device = 'cuda'
+        cudnn.benchmark = True
+        encoder = torch.nn.DataParallel(encoder)
+        
+    else:
+        device = 'cpu'
+
+
     decoder = decoder.to(device)
-    decoder.eval()
-    encoder = checkpoint['encoder']
     encoder = encoder.to(device)
+    decoder.eval()
     encoder.eval()
 
-    # Load word map (word2ix)
-    with open(args.word_map, 'r') as j:
-        word_map = json.load(j)
-    rev_word_map = {v: k for k, v in word_map.items()}  # ix2word
+    print("Models Loaded.")
 
-    # Encode, decode with attention and beam search
-    seq, alphas = caption_image_beam_search(encoder, decoder, args.img, word_map, args.beam_size)
-    alphas = torch.FloatTensor(alphas)
+    # Load Image 
+    print("Loading Images")
+    imgs = []
+    if args.predict_whole_directory:
+        #load whole Directory of image
+    else:
+        pass
+    print("Images loaded. There are {} images to predict".format(len(imgs)))
 
-    # Visualize caption and attention of best sequence
-    visualize_att(args.img, seq, alphas, rev_word_map, args.smooth)
+    # Predict Captions
+    with open(args.output_dir,'r') as w:
+        for img in imgs:
+            predictions = caption_image(encoder, decoder, img, idx2word, beam_size)
+            smiles = []
+            for prediction in predictions:
+                smiles.append(tokenizer.decode(encoding.ids))
+            smiles2condfidence = generateImages
+            # Create Images from Predicted SMILES and choose one which matches the original image most. 
+
+
+    

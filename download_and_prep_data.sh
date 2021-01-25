@@ -40,8 +40,6 @@ shuf smiles_data_unique.smi > shuffled_unique_smiles.smi
 rm shuffled_unique_smiles.smi smiles_data.smi smiles_data_unique.smi
 rm decorator_scaffolds_recap.training.smi decorator_scaffolds_recap.validation.smi decorator_scaffolds_drd2.training.smi decorator_scaffolds_drd2.validation.smi chembl.training.smi chembl.validation.smi gdb13.1M.training.smi gdb13.1M.validation.smi chembl24_10uM_20-100.csv
 mkdir training_images validation_images evaluation_images
-
-
 cd ..
 python create_images_from_simles.py --input_file data/validation.smi --output_folder data/validation_images
 python create_images_from_simles.py --input_file data/evaluation.smi --output_folder data/evaluation_images

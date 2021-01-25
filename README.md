@@ -14,5 +14,13 @@ Data is the collection of a bunch of different SMILES molecules
 
 
 
+# Tokenizers
+
+python train_tokenizer.py  --training_files data/ --do_train --do_test --tokenizer_name tokenizer_vocab_2000.json --vocab_size 2000 --min_frequency 2
+
+Note Tokenizers need to be cased. 
+
+
+
 # Baseline
 https://cactus.nci.nih.gov/osra/
