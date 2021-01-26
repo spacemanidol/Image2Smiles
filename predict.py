@@ -4,30 +4,12 @@ from tqdm import tqdm
 
 from encoders import Resnet101Encoder
 
-from tokenizers.decoders import ByteLevel as ByteLevelDecoder
-from tokenizers.models import BPE
-from tokenizers.normalizers import Lowercase, NFKC, Sequence
-from tokenizers.pre_tokenizers import ByteLevel
-from tokenizers.trainers import BpeTrainer
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, processors
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Predict Smiles Given an input image')
-    parser.add_argument('--image', type=str, help='path to image')
-    parser.add_argument('--predict_whole_directory', action='store_true', help='image path is a directory and predict all molecules.')
-    parser.add_argument('--encoder_type', type=str, default='Resnet101Encoder', help='Architecture used for the encoder')
-    parser.add_argument('--tokenizer', type=str, help='tokenizer name in the folder tokenizers/')
-    parser.add_argument('--model', help='model path')
-    parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')
-    parser.add_argument('--beam_size', default=5, type=int, help='beam size for prediction creation')
-    parser.add_argument('--output_dir', type=str, default='output.txt', help='file name to produce model predictions for each image.')
-    parser.add_argument('--cuda', action='store_true', help='Use cuda')
-    args = parser.parse_args()
-
+def main(args):
     # Load Tokenizer
     print("Loading Tokenizer: {}.".format(args.tokenizer))
-    tokenizer = Tokenizer.from_file(os.path.join('tokenizers',args.tokenizer_name))
+    tokenizer = Tokenizer.from_file(os.path.join('tokenizers',args.tokenizer))
     print("Testing with SMILES String: {}".format(args.test_string))
     encoding = tokenizer.encode(args.test_string)
     print("Encoded string: {}".format(encoding.tokens))
@@ -84,6 +66,16 @@ if __name__ == '__main__':
                 smiles.append(tokenizer.decode(encoding.ids))
             smiles2condfidence = generateImages
             # Create Images from Predicted SMILES and choose one which matches the original image most. 
-
-
-    
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Predict Smiles Given an input image')
+    parser.add_argument('--image', type=str, help='path to image')
+    parser.add_argument('--predict_whole_directory', action='store_true', help='image path is a directory and predict all molecules.')
+    parser.add_argument('--encoder_type', type=str, default='Resnet101Encoder', help='Architecture used for the encoder')
+    parser.add_argument('--tokenizer', type=str, help='tokenizer name in the folder tokenizers/')
+    parser.add_argument('--model', help='model path')
+    parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')
+    parser.add_argument('--beam_size', default=5, type=int, help='beam size for prediction creation')
+    parser.add_argument('--output_dir', type=str, default='output.txt', help='file name to produce model predictions for each image.')
+    parser.add_argument('--cuda', action='store_true', help='Use cuda')
+    args = parser.parse_args()
+    main(args)    

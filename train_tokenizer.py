@@ -22,7 +22,10 @@ def main(args):
         # Initialize a tokenizer
         files = get_smi_files(args.training_files)
         print("Training BPE tokenizer using the following files:{}".format(files))
-        tokenizer = Tokenizer(models.BPE())
+        tokenizer = Tokenizer(models.BPE(unk_token="<unk>"))
+        tokenizer.add_special_tokens(["<pad>","<start>", "<end>","<unk>" ])
+        tokenizer.enable_padding(pad_id=0, pad_token="<pad>", length=args.pad_len)
+        tokenizer.enable_truncation(max_length=args.pad_len,strategy='only_first')
         tokenizer.normalizer = Sequence([NFKC()])
         tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
         tokenizer.decoder = decoders.ByteLevel()
@@ -46,6 +49,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate a smiles tokenizer given candidate files and target configs.')
     parser.add_argument('--training_files', type=str, default='data/', help='source of input smiles data')
+    parser.add_argument('--pad_len', type=int, default=150, help='how much to pad tokenized input')
     parser.add_argument('--do_train', action='store_true', help='Train a tokenizer' )
     parser.add_argument('--do_test', action='store_true', help='Test the tokenizer found in tokenizer dir file')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')

@@ -1,17 +1,12 @@
 import os
 import argparse
 from rdkit import Chem
-from rdkit.Chem import Draw
-import deepchem as dc
 
-import torch.backends.cudnn as cudnn
-import torch.optim
-import torch.utils.data
-import torchvision.transforms as transforms
-from datasets import *
-from utils import *
-from nltk.translate.bleu_score import corpus_bleu
-import torch.nn.functional as F
+smis = ["CN2C(=O)N(C)C(=O)C1=C2N=CN1C",
+          "CN1C=NC2=C1C(=O)N(C)C(=O)N2C"]
+
+cans = [Chem.MolToSmiles(Chem.MolFromSmiles(smi),True) for smi in smis]
+
 from tqdm import tqdm
 
 # Parameters
@@ -183,6 +178,8 @@ def evaluate(beam_size):
 
 def main(args):
     """ Evaluate the BLEU-1 scores"""
+
+    
     return 0
 
 if __name__ == '__main__':
