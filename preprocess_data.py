@@ -51,18 +51,21 @@ def create_input_files(dataset_path, config_output_name, output_name, output_pat
     with open(os.path.join(output_path, 'captions_length_' + output_name + '.json'), 'w') as j:
         json.dump(caption_lengths, j)
 
-def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name, max_length):
+def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name, max_length, label_filename):
     data = {"images" : []}
-    with open(os.path.join(data_dir, "labels.smi"), "r") as f:
+    with open(os.path.join(data_dir, label_filename), "r") as f:
         for i, l in enumerate(tqdm(f)):
-            smiles, idx = l.strip().split("\t")
-            encoding = tokenizer.encode(smiles)
-            if 0 in encoding.ids:
-                cap_len = encoding.ids.index(0)
-            else:
-                cap_len - max_length
-            current_sample = {"filepath": data_dir, "filename": "{}.png".format(idx), "imgid": 0, "split": split, "sentences" : [{"tokens": encoding.tokens, "raw": smiles, "ids": encoding.ids , "length": cap_len}] } # note if image augmentation ever happens need to introduce a sentence id token. see mscoco json for example
-            data["images"].append(current_sample)
+            try:
+                smiles, idx = l.strip().split("\t")
+                encoding = tokenizer.encode(smiles)
+                if 0 in encoding.ids:
+                    cap_len = encoding.ids.index(0)
+                else:
+                    cap_len - max_length
+                current_sample = {"filepath": data_dir, "filename": "{}.png".format(idx), "imgid": 0, "split": split, "sentences" : [{"tokens": encoding.tokens, "raw": smiles, "ids": encoding.ids , "length": cap_len}] } # note if image augmentation ever happens need to introduce a sentence id token. see mscoco json for example
+                data["images"].append(current_sample)
+            except:
+                pass
     pickle.dump(data, open(os.path.join(data_dir, config_output_name),'wb'))
     a = pickle.load(open(os.path.join(data_dir, config_output_name),'rb'))
     
@@ -79,7 +82,7 @@ def main(args):
 
     # Create tokenized captions
     print("Creating JSON")
-    create_tokenized_smiles_json(tokenizer, args.data_dir, args.data_split, args.config_output_name, args.max_length)
+    create_tokenized_smiles_json(tokenizer, args.data_dir, args.data_split, args.config_output_name, args.max_length, args.label_filename)
     print("JSON created")
 
     # Save Images and processed Captions
@@ -91,6 +94,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Preprocess training data')
     parser.add_argument('--max_length', type=int, default=150, help='Max length of tokenized smiles')
+    parser.add_argument('--label_filename', type=str, default='labels.smi', help='name of labels file in case dataset is enourmous')
     parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer name in the folder tokenizers/')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')
     parser.add_argument('--data_dir', default='data/validation_images', type=str, help='directory of data to be processed. Expect a labels.smi file and associated images')

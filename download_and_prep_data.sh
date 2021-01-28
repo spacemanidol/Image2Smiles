@@ -61,5 +61,10 @@ python train_tokenizer.py  --training_files data/ --do_train --do_test --tokeniz
 echo('Done Training Tokenizers')
 
 echo('Preprocessing Data with Tokenizers for model Training')
-
+split -n 4 data/training_images/labels.smi
+mv xaa labels1.smi
+mv labels* data/training_images/
+python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/training_images/ --data_split training --image_output_filename training --output_path data/ 
+python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/validation_images/ --data_split validation --image_output_filename validation --output_path data/
+python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/evaluation_images/ --data_split evaluation --image_output_filename evaluation --output_path data/
 echo('Done preprocessing data. You may move on to model training.')

@@ -10,7 +10,7 @@ from collections import Counter
 from random import seed, choice, sample
 
 class CaptionDataset(Dataset):
-    def __init__(self, data_folder, data_name):
+    def __init__(self, data_folder, data_name, transform):
         """
         :param data_folder: folder where data files are stored
         :param data_name: base name of processed datasets
@@ -26,10 +26,13 @@ class CaptionDataset(Dataset):
             self.caplens = json.load(j)
         # Total number of datapoints
         self.dataset_size = len(self.captions)
+        self.transform = transform
 
     def __getitem__(self, i):
         # Remember, the Nth caption corresponds to the (N // captions_per_image)th image
         img = torch.FloatTensor(self.imgs[i // self.cpi] / 255.)
+        if self.transform is not None:
+            img = self.transform(img)
         caption = torch.LongTensor(self.captions[i])
         caplen = torch.LongTensor([self.caplens[i]])
         return img, caption, caplen
@@ -37,6 +40,26 @@ class CaptionDataset(Dataset):
     def __len__(self):
         return self.dataset_size
 
+class AverageMeter(object):
+    """
+    Keeps track of most recent, average, sum, and count of a metric.
+    """
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+        
 def clip_gradient(optimizer, grad_clip):
     """
     Clips gradients computed during backpropagation to avoid explosion of gradients.
