@@ -13,7 +13,7 @@ from tqdm import tqdm
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, processors
 
 
-def create_input_files(dataset_path, config_output_name, output_name, output_path):
+def create_input_files(dataset_path, config_output_name, output_name, output_path, img_size):
     '''
     Creates input files for using with models.
     :param dataset_path: the path to the data to be processed
@@ -27,7 +27,7 @@ def create_input_files(dataset_path, config_output_name, output_name, output_pat
     if os.path.exists(processed_image_path):
         os.remove(processed_image_path)
     with h5py.File(processed_image_path, 'a') as h:
-        images = h.create_dataset('images', (len(data['images']), 3, 256, 256), dtype='uint8')
+        images = h.create_dataset('images', (len(data['images']), 3, img_size, img_size), dtype='uint8')
         print('\nReading images and captions, storing to file...\n')
         for i, cur_data in enumerate(data['images']):
             path = os.path.join(cur_data['filepath'], cur_data['filename'])
@@ -35,9 +35,9 @@ def create_input_files(dataset_path, config_output_name, output_name, output_pat
             if len(img.shape) == 2:
                 img = img[:, :, np.newaxis]
                 img = np.concatenate([img, img, img], axis=2)
-            img = imresize(img, (256, 256))
+            img = imresize(img, (img_size, img_size))
             img = img.transpose(2, 0, 1)
-            assert img.shape == (3, 256, 256)
+            assert img.shape == (3, img_size, img_size)
             assert np.max(img) <= 255
             # Save image to HDF5 file
             images[i] = img
@@ -58,11 +58,14 @@ def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name,
             try:
                 smiles, idx = l.strip().split("\t")
                 encoding = tokenizer.encode(smiles)
-                if 0 in encoding.ids:
-                    cap_len = encoding.ids.index(0)
+                encodingids = encoding.ids
+                encodingids = [1] + encodingids #add <start> token
+                if 0 in encodingids:
+                    cap_len = encodingids.index(0)+1
                 else:
-                    cap_len - max_length
-                current_sample = {"filepath": data_dir, "filename": "{}.png".format(idx), "imgid": 0, "split": split, "sentences" : [{"tokens": encoding.tokens, "raw": smiles, "ids": encoding.ids , "length": cap_len}] } # note if image augmentation ever happens need to introduce a sentence id token. see mscoco json for example
+                    cap_len = max_length
+                encodingids[cap_len-1] = 2 #add <end> token
+                current_sample = {"filepath": data_dir, "filename": "{}.png".format(idx), "imgid": 0, "split": split, "sentences" : [{"tokens": encoding.tokens, "raw": smiles, "ids": encodingids , "length": cap_len}] } # note if image augmentation ever happens need to introduce a sentence id token. see mscoco json for example
                 data["images"].append(current_sample)
             except:
                 pass
@@ -87,13 +90,14 @@ def main(args):
 
     # Save Images and processed Captions
     print("Processing and Saving Images")
-    create_input_files(args.data_dir, args.config_output_name, args.image_output_filename, args.output_path)
+    create_input_files(args.data_dir, args.config_output_name, args.image_output_filename, args.output_path, args.img_size)
     print("Done processing dataset")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Preprocess training data')
     parser.add_argument('--max_length', type=int, default=150, help='Max length of tokenized smiles')
+    parser.add_argument('--img_size', type=int, default=256, help='Size of image X and Y dimensions')
     parser.add_argument('--label_filename', type=str, default='labels.smi', help='name of labels file in case dataset is enourmous')
     parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer name in the folder tokenizers/')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')

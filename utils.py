@@ -25,8 +25,9 @@ class CaptionDataset(Dataset):
         with open(os.path.join(data_folder, 'captions_length_' + data_name + '.json'), 'r') as j:
             self.caplens = json.load(j)
         # Total number of datapoints
-        self.dataset_size = len(self.captions)
+        self.dataset_size = self.h['images'].shape[0]
         self.transform = transform
+        self.cpi = 1
 
     def __getitem__(self, i):
         # Remember, the Nth caption corresponds to the (N // captions_per_image)th image
@@ -35,7 +36,8 @@ class CaptionDataset(Dataset):
             img = self.transform(img)
         caption = torch.LongTensor(self.captions[i])
         caplen = torch.LongTensor([self.caplens[i]])
-        return img, caption, caplen
+        data = (img, caption, caplen)
+        return data
     
     def __len__(self):
         return self.dataset_size
@@ -59,7 +61,22 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
-        
+
+def accuracy(scores, targets, k):
+    """
+    Computes top-k accuracy, from predicted and true labels.
+    :param scores: scores from the model
+    :param targets: true labels
+    :param k: k in top-k accuracy
+    :return: top-k accuracy
+    """
+
+    batch_size = targets.size(0)
+    _, ind = scores.topk(k, 1, True, True)
+    correct = ind.eq(targets.view(-1, 1).expand_as(ind))
+    correct_total = correct.view(-1).float().sum()  # 0D tensor
+    return correct_total.item() * (100.0 / batch_size)
+
 def clip_gradient(optimizer, grad_clip):
     """
     Clips gradients computed during backpropagation to avoid explosion of gradients.

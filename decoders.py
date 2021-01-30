@@ -1,47 +1,7 @@
 import torch
 from torch import nn
 import torchvision
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-class Encoder(nn.Module):
-    """
-    Encoder.
-    """
-    def __init__(self, encoded_image_size=14):
-        super(Encoder, self).__init__()
-        self.enc_image_size = encoded_image_size
-        resnet = torchvision.models.resnet101(pretrained=True)  # pretrained ImageNet ResNet-101
-        # Remove linear and pool layers (since we're not doing classification)
-        modules = list(resnet.children())[:-2]
-        self.resnet = nn.Sequential(*modules)
-        # Resize image to fixed size to allow input images of variable size
-        self.adaptive_pool = nn.AdaptiveAvgPool2d((encoded_image_size, encoded_image_size))
-        self.fine_tune()
-    def forward(self, images):
-        """
-        Forward propagation.
-        :param images: images, a tensor of dimensions (batch_size, 3, image_size, image_size)
-        :return: encoded images
-        """
-        out = self.resnet(images)  # (batch_size, 2048, image_size/32, image_size/32)
-        out = self.adaptive_pool(out)  # (batch_size, 2048, encoded_image_size, encoded_image_size)
-        out = out.permute(0, 2, 3, 1)  # (batch_size, encoded_image_size, encoded_image_size, 2048)
-        return out
-    def fine_tune(self, fine_tune=True):
-        """
-        Allow or prevent the computation of gradients for convolutional blocks 2 through 4 of the encoder.
-        :param fine_tune: Allow?
-        """
-        for p in self.resnet.parameters():
-            p.requires_grad = False
-        # If fine-tuning, only fine-tune convolutional blocks 2 through 4
-        for c in list(self.resnet.children())[5:]:
-            for p in c.parameters():
-                p.requires_grad = fine_tune
-
-
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class Attention(nn.Module):
     """
     Attention Network.
@@ -153,11 +113,10 @@ class DecoderWithAttention(nn.Module):
         :param caption_lengths: caption lengths, a tensor of dimension (batch_size, 1)
         :return: scores for vocabulary, sorted encoded captions, decode lengths, weights, sort indices
         """
-    
         batch_size = encoder_out.size(0)
         encoder_dim = encoder_out.size(-1)
         vocab_size = self.vocab_size
-
+    
         # Flatten image
         encoder_out = encoder_out.view(batch_size, -1, encoder_dim)  # (batch_size, num_pixels, encoder_dim)
         num_pixels = encoder_out.size(1)
@@ -176,11 +135,11 @@ class DecoderWithAttention(nn.Module):
         # We won't decode at the <end> position, since we've finished generating as soon as we generate <end>
         # So, decoding lengths are actual lengths - 1
         decode_lengths = (caption_lengths - 1).tolist()
-
+    
         # Create tensors to hold word predicion scores and alphas
         predictions = torch.zeros(batch_size, max(decode_lengths), vocab_size).to(device)
         alphas = torch.zeros(batch_size, max(decode_lengths), num_pixels).to(device)
-
+        
         # At each time-step, decode by
         # attention-weighing the encoder's output based on the decoder's previous hidden state output
         # then generate a new word in the decoder with the previous word and the attention weighted encoding

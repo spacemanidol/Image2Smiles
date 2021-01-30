@@ -5,7 +5,7 @@ cache/*
 models/*
 # Prerequisites
 *.d
-
+.vscode
 # Object files
 *.o
 *.ko
