@@ -23,6 +23,7 @@ from decoders import DecoderWithAttention
 from utils import CaptionDataset, clip_gradient, adjust_learning_rate, AverageMeter, accuracy
 
 def save_checkpoint(model_path, epoch, encoder, decoder, encoder_optimizer, decoder_optimizer, bleu4, is_best):
+    print("Saving model")
     state = {'epoch': epoch,
              'bleu-4': bleu4,
              'encoder': encoder,
@@ -271,6 +272,6 @@ if __name__ == '__main__':
     parser.add_argument('--alphac', default=1, type=int, help="regularization param")
     parser.add_argument('--prune', action='store_true', help='prune network')
     parser.add_argument('--fine_tune_encoder', action='store_true', help='fine tune encoder')
-    parser.add_argument('--print_freq', default=100, type=int, help="print loss and top5 acc every n batches")
+    parser.add_argument('--print_freq', default=5000, type=int, help="print loss and top5 acc every n batches")
     args = parser.parse_args()
     main(args)
