@@ -1,7 +1,3 @@
-
-#Logging Of Model
-#import wandb
-#wandb.init(project="game-theorectic-pruning")
 import time
 import torch.backends.cudnn as cudnn
 import torch.optim
@@ -18,9 +14,10 @@ from tqdm import tqdm
 
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, processors
 
+
 from encoders import Resnet101Encoder
 from decoders import DecoderWithAttention
-from utils import CaptionDataset, clip_gradient, adjust_learning_rate, AverageMeter, accuracy
+from utils import CaptionDataset, clip_gradient, adjust_learning_rate, AverageMeter, accuracy, set_seed
 
 def save_checkpoint(model_path, epoch, encoder, decoder, encoder_optimizer, decoder_optimizer, bleu4, is_best):
     print("Saving model")
@@ -46,12 +43,14 @@ def main(args):
     print("Decoded string: {}".format(decoded))
     print("Tokenizer Loaded.")
     vocab_size = tokenizer.get_vocab_size()
+    set_seed(args.seed)
     # Load Checkpoint if exists
     start_epoch = 0
+    best_bleu4 = 0
     if args.load:
         try:
-            print("Loading models: {}".format(args.model_path))
-            checkpoint = torch.load(args.model_path)
+            print("Loading models: {}".format(args.model_path+'checkpoint_7'))
+            checkpoint = torch.load(args.model_path+'checkpoint_7')
             start_epoch = checkpoint['epoch'] + 1
             best_bleu = checkpoint['bleu-4']
             decoder = checkpoint['decoder']
@@ -62,7 +61,7 @@ def main(args):
             if encoder_optimizer is None:
                 encoder_optimizer = torch.optim.Adam(params=filter(lambda p: p.requires_grad, encoder.parameters()),lr=args.encoder_lr)
             print("Models Loaded")
-        except:
+        except: 
             print("Models couldn't be loaded. Aborting")
             exit(0)
     else:
@@ -111,9 +110,9 @@ def main(args):
     print("Datasets loaded")
     
     epochs_since_improvement = 0
-    best_bleu4 = 0
+    
     print("Validating Model")
-    best_bleu4 = validate(encoder, decoder, val_loader, decoder_optimizer, encoder_optimizer, device,  criterion, tokenizer)
+    #best_bleu4 = validate(encoder, decoder, val_loader, decoder_optimizer, encoder_optimizer, device,  criterion, tokenizer)
     print("BLEU Score: {}".format(best_bleu4))
     # Train and validate
     print("Moving on to training")
@@ -273,5 +272,6 @@ if __name__ == '__main__':
     parser.add_argument('--prune', action='store_true', help='prune network')
     parser.add_argument('--fine_tune_encoder', action='store_true', help='fine tune encoder')
     parser.add_argument('--print_freq', default=5000, type=int, help="print loss and top5 acc every n batches")
+    parser.add_argument('--seed', default=42, type=int, help='Set random seed')
     args = parser.parse_args()
     main(args)

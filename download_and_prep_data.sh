@@ -45,6 +45,15 @@ rm decorator_scaffolds_recap.training.smi decorator_scaffolds_recap.validation.s
 mkdir training_images validation_images evaluation_images
 cd ..
 echo('Done Formating Data')
+echo('Make Canonical')
+python make_canonical.py --input_file data/validation.smi --output_file data/validation_canonical.smi
+python make_canonical.py --input_file data/evaluation.smi --output_file data/evaluation_canonical.smi
+python make_canonical.py --input_file data/training.smi --output_file data/training_canonical.smi
+uniq data/evaluation_canonical.smi > data/evaluation.smi
+uniq data/validation_canonical.smi > data/validation.smi
+uniq data/training_canonical.smi > data/training.smi
+rm data/evaluation_canonical.smi data/validation_canonical.smi data/training_canonical.smi
+echo('Done Making Cannonical')
 
 echo('Converting Data to Images')
 python create_images_from_smiles.py --input_file data/validation.smi --output_folder data/validation_images
