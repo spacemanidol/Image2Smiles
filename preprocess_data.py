@@ -13,42 +13,48 @@ from tqdm import tqdm
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, processors
 
 
-def create_input_files(dataset_path, config_output_name, output_name, output_path, img_size):
+def create_input_files(args, dataset_path, config_output_name, output_name, output_path, img_size):
     '''
     Creates input files for using with models.
     :param dataset_path: the path to the data to be processed
     '''
     data = pickle.load(open(os.path.join(dataset_path, config_output_name),'rb'))
-
-    paths = []
     captions = []
     caption_lengths = []
-    processed_image_path = os.path.join(output_path, output_name + '.hdf5')
-    if os.path.exists(processed_image_path):
-        os.remove(processed_image_path)
-    with h5py.File(processed_image_path, 'a') as h:
-        images = h.create_dataset('images', (len(data['images']), 3, img_size, img_size), dtype='uint8')
-        print('\nReading images and captions, storing to file...\n')
+    if args.process_img:
+        print("Processing images")
+        processed_image_path = os.path.join(output_path, output_name + '.hdf5')
+        if os.path.exists(processed_image_path):
+            os.remove(processed_image_path)
+        with h5py.File(processed_image_path, 'a') as h:
+            images = h.create_dataset('images', (len(data['images']), 3, img_size, img_size), dtype='uint8')
+            print('\nReading images and captions, storing to file...\n')
+            for i, cur_data in enumerate(data['images']):
+                path = os.path.join(cur_data['filepath'], cur_data['filename'])
+                img = imread(path)
+                if len(img.shape) == 2:
+                    img = img[:, :, np.newaxis]
+                    img = np.concatenate([img, img, img], axis=2)
+                img = imresize(img, (img_size, img_size))
+                img = img.transpose(2, 0, 1)
+                assert img.shape == (3, img_size, img_size)
+                assert np.max(img) <= 255
+                # Save image to HDF5 file
+                images[i] = img
+                captions.append(cur_data['sentences'][0]['ids'])
+                caption_lengths.append(cur_data['sentences'][0]['length'])
+    else:
+        print("Just processing captions")
         for i, cur_data in enumerate(data['images']):
-            path = os.path.join(cur_data['filepath'], cur_data['filename'])
-            img = imread(path)
-            if len(img.shape) == 2:
-                img = img[:, :, np.newaxis]
-                img = np.concatenate([img, img, img], axis=2)
-            img = imresize(img, (img_size, img_size))
-            img = img.transpose(2, 0, 1)
-            assert img.shape == (3, img_size, img_size)
-            assert np.max(img) <= 255
-            # Save image to HDF5 file
-            images[i] = img
             captions.append(cur_data['sentences'][0]['ids'])
             caption_lengths.append(cur_data['sentences'][0]['length'])
 
+
     # Save encoded captions and their lengths to JSON files
-    with open(os.path.join(output_path, 'captions_' + output_name + '.json'), 'w') as j:
+    with open(os.path.join(output_path, args.output_prefix + 'captions_' + output_name + '.json'), 'w') as j:
         json.dump(captions, j)
 
-    with open(os.path.join(output_path, 'captions_length_' + output_name + '.json'), 'w') as j:
+    with open(os.path.join(output_path, args.output_prefix + 'captions_length_' + output_name + '.json'), 'w') as j:
         json.dump(caption_lengths, j)
 
 def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name, max_length, label_filename):
@@ -65,12 +71,12 @@ def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name,
                 else:
                     cap_len = max_length
                 encodingids[cap_len-1] = 2 #add <end> token
-                current_sample = {"filepath": data_dir, "filename": "{}.png".format(idx), "imgid": 0, "split": split, "sentences" : [{"tokens": encoding.tokens, "raw": smiles, "ids": encodingids , "length": cap_len}] } # note if image augmentation ever happens need to introduce a sentence id token. see mscoco json for example
+                current_sample = {"filepath": data_dir, "filename": "{}".format(idx), "imgid": 0, "split": split, "sentences" : [{"tokens": encoding.tokens, "raw": smiles, "ids": encodingids , "length": cap_len}] } # note if image augmentation ever happens need to introduce a sentence id token. see mscoco json for example
                 data["images"].append(current_sample)
             except:
                 pass
     pickle.dump(data, open(os.path.join(data_dir, config_output_name),'wb'))
-    a = pickle.load(open(os.path.join(data_dir, config_output_name),'rb'))
+    del data
     
 def main(args):
     # Load Tokenizer
@@ -90,7 +96,7 @@ def main(args):
 
     # Save Images and processed Captions
     print("Processing and Saving Images")
-    create_input_files(args.data_dir, args.config_output_name, args.image_output_filename, args.output_path, args.img_size)
+    create_input_files(args, args.data_dir, args.config_output_name, args.image_output_filename, args.output_path, args.img_size)
     print("Done processing dataset")
 
 
@@ -106,5 +112,7 @@ if __name__ == '__main__':
     parser.add_argument('--config_output_name', default='dataset_img2smi.pkl', type=str, help='name of json file to store processable metadata')
     parser.add_argument('--image_output_filename', default='validation', type=str, help='prefix for output image, caption, and caption length files.')
     parser.add_argument('--output_path', default='data/', type=str, help='output folder path.')
+    parser.add_argument('--output_prefix', default='vocab2000', type=str, help='name for output captions files based ')
+    parser.add_argument('--process_img', action='store_true', default=False, help='create image files')
     args = parser.parse_args()
     main(args)

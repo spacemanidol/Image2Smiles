@@ -75,5 +75,7 @@ mv xaa labels1.smi
 mv labels* data/training_images/
 python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/training_images/ --data_split training --image_output_filename training --output_path data/ 
 python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/validation_images/ --data_split validation --image_output_filename validation --output_path data/
-python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/evaluation_images/ --data_split evaluation --image_output_filename evaluation --output_path data/
+python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/evaluation_images/ --data_split evaluation --image_output_filename evaluation --output_path data/ --process_img
 echo('Done preprocessing data. You may move on to model training.')
+
+python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/evaluation_images/ --data_split evaluation --image_output_filename evaluation --output_path data/ --process_img --output_prefix vocab2000

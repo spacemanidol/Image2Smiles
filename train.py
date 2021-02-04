@@ -30,7 +30,7 @@ def save_checkpoint(model_path, epoch, encoder, decoder, encoder_optimizer, deco
     filename = model_path + 'checkpoint_' + str(epoch)
     torch.save(state, filename)
     if is_best:
-        torch.save(state, filename+ '_BEST')
+        torch.save(state, model_path + '_BEST')
 
 def main(args):
     # Load Tokenizer
@@ -49,8 +49,8 @@ def main(args):
     best_bleu4 = 0
     if args.load:
         try:
-            print("Loading models: {}".format(args.model_path+'checkpoint_7'))
-            checkpoint = torch.load(args.model_path+'checkpoint_7')
+            print("Loading models: {}".format(args.model_path + '_BEST'))
+            checkpoint = torch.load(args.model_path+'_BEST')
             start_epoch = checkpoint['epoch'] + 1
             best_bleu = checkpoint['bleu-4']
             decoder = checkpoint['decoder']
@@ -112,36 +112,34 @@ def main(args):
     epochs_since_improvement = 0
     
     print("Validating Model")
-    #best_bleu4 = validate(encoder, decoder, val_loader, decoder_optimizer, encoder_optimizer, device,  criterion, tokenizer)
+    cur_bleu4 = validate(encoder, decoder, val_loader, decoder_optimizer, encoder_optimizer, device,  criterion, tokenizer)
+    if cur_bleu4 > best_bleu4:
+        best_bleu4 = cur_bleu4
     print("BLEU Score: {}".format(best_bleu4))
     # Train and validate
-    print("Moving on to training")
+    print("Traing model")
     
     for epoch in range(start_epoch, args.epochs):
-        print("Starting epoch {}".format(epoch))
-        if epochs_since_improvement == 20:
-            print("No improvement in 20 epochs. Ending training")
-        if epochs_since_improvement > 0 and epochs_since_improvement % 8 == 0:
-            adjust_learning_rate(decoder_optimizer, 0.8)
-            if fine_tune_encoder:
-                adjust_learning_rate(encoder_optimizer, 0.8)
-        train(encoder, decoder, train_loader, decoder_optimizer, encoder_optimizer, device, criterion)
+        print("Starting epoch {}".format(epoch))    
+        train(args, encoder, decoder, train_loader, decoder_optimizer, encoder_optimizer, device, criterion)
         cur_bleu4 = validate(encoder, decoder, val_loader, decoder_optimizer, encoder_optimizer, device,  criterion, tokenizer)
         is_best= False
-        epochs_since_improvement += 1
         if cur_bleu4 > best_bleu4:
             is_best = True
             best_bleu4 = cur_bleu4
-            epochs_since_improvement = 0 
         save_checkpoint(args.model_path, epoch, encoder, decoder, encoder_optimizer, decoder_optimizer, cur_bleu4, is_best)
 
-def train(encoder, decoder, loader, decoder_optimizer, encoder_optimizer, device, criterion):
+def train(args, encoder, decoder, loader, decoder_optimizer, encoder_optimizer, device, criterion):
     decoder.train()  # train mode (dropout and batchnorm is used)
     encoder.train()
     losses = AverageMeter()  # loss (per word decoded)
-    top5accs = AverageMeter()  # top5 accuracy
+    top3accs = AverageMeter()  # top accuracy
     i = 0
     for data in tqdm(loader):
+        if i % args.lr_update_freq == 0:
+            adjust_learning_rate(decoder_optimizer, args.decay_rate)
+            if args.fine_tune_encoder:
+                adjust_learning_rate(encoder_optimizer, args.decay_rate)
         imgs = data[0]
         caps = data[1]
         caplens = data[2]
@@ -150,7 +148,6 @@ def train(encoder, decoder, loader, decoder_optimizer, encoder_optimizer, device
         caps = caps.to(imgs.device)
         caplens = caplens.to(imgs.device)
         scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(imgs, caps, caplens)
-        #print(decode_lengths)
         targets = caps_sorted[:, 1:] #remove <start> and <end> tokens
         scores = pack_padded_sequence(scores, decode_lengths, batch_first=True).to(device) #remove padding tokens
         targets = pack_padded_sequence(targets, decode_lengths, batch_first=True).to(device)
@@ -163,7 +160,6 @@ def train(encoder, decoder, loader, decoder_optimizer, encoder_optimizer, device
         if encoder_optimizer is not None:
             encoder_optimizer.zero_grad()
         loss.backward()
-        # Clip gradients
         if args.gradient_clip is not None:
             clip_gradient(decoder_optimizer, args.gradient_clip)
             if encoder_optimizer is not None:
@@ -173,12 +169,12 @@ def train(encoder, decoder, loader, decoder_optimizer, encoder_optimizer, device
         if encoder_optimizer is not None:
             encoder_optimizer.step()
         # Keep track of metrics
-        top5 = accuracy(scores.data, targets.data, 5)
+        top3 = accuracy(scores.data, targets.data, 3)
         losses.update(loss.item(), sum(decode_lengths))
-        top5accs.update(top5, sum(decode_lengths))
+        top3accs.update(top3, sum(decode_lengths))
         # Print status
         if i % args.print_freq == 0:
-            print('Loss {loss.val:.4f} ({loss.avg:.4f})\t''Top-5 Accuracy {top5.val:.3f} ({top5.avg:.3f})'.format(loss=losses,top5=top5accs))
+            print('Loss {loss.val:.4f} ({loss.avg:.4f})\t''Top-3 Accuracy {top3.val:.3f} ({top3.avg:.3f})'.format(loss=losses,top3=top3accs))
         i += 1
                 
 def validate(encoder, decoder, loader, decoder_optimizer, encoder_optimizer, device, criterion, tokenizer):
@@ -267,6 +263,8 @@ if __name__ == '__main__':
     parser.add_argument('--load', action='store_true', help='load existing model')
     parser.add_argument('--encoder_lr', default=1e-4, type=float, help='encoder learning rate if fine tuning')
     parser.add_argument('--decoder_lr', default=4e-4, type=float, help='decoder learning rate')
+    parser.add_argument('--lr_update_freq', default=1000, type=int, help='How often to decrease lr')
+    parser.add_argument('--decay_rate', default=.9, type=float, help='how much to update LR by')
     parser.add_argument('--gradient_clip', default=5.0, type=float, help='clip gradients at an abosulte value of')
     parser.add_argument('--alphac', default=1, type=int, help="regularization param")
     parser.add_argument('--prune', action='store_true', help='prune network')

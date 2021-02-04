@@ -5,7 +5,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 
 def main(args):
-    count = 0
+    count = args.count_start
     with open(args.input_file,'r') as f:
         with open(os.path.join(args.output_folder,'labels.smi'),'w') as w:
             for i, l in enumerate(tqdm(f)):
@@ -25,5 +25,6 @@ if __name__ == '__main__':
     parser.add_argument('--output_folder', type=str, default='data/validation_images')
     parser.add_argument('--img_size', type=int, default=128, help='size of image to output')
     parser.add_argument('--diversify', action='store_true', help='diversify images produces. Nothing implemented yet')
+    parser.add_argument('--count_start', type=int, default=0, help='start range for image numbering')
     args = parser.parse_args()
     main(args)

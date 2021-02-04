@@ -11,46 +11,28 @@
     },
     "direction": "Right",
     "pad_to_multiple_of": null,
-    "pad_id": 0,
+    "pad_id": 101,
     "pad_type_id": 0,
     "pad_token": "<pad>"
   },
   "added_tokens": [
     {
-      "id": 0,
-      "special": true,
-      "content": "<pad>",
-      "single_word": false,
-      "lstrip": false,
-      "rstrip": false,
-      "normalized": false
-    },
-    {
-      "id": 1,
-      "special": true,
+      "id": 100,
+      "special": false,
       "content": "<start>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
-      "normalized": false
+      "normalized": true
     },
     {
-      "id": 2,
-      "special": true,
+      "id": 101,
+      "special": false,
       "content": "<end>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
-      "normalized": false
-    },
-    {
-      "id": 3,
-      "special": true,
-      "content": "<unk>",
-      "single_word": false,
-      "lstrip": false,
-      "rstrip": false,
-      "normalized": false
+      "normalized": true
     }
   ],
   "normalizer": {
@@ -171,18 +153,18 @@
       "Nc": 85,
       ")[": 86,
       "-]": 87,
-      "OCC": 88,
-      "-])": 89,
-      "COc": 90,
-      ")(=": 91,
-      "nH": 92,
-      "([": 93,
-      ")=": 94,
-      "CCN": 95,
-      "Br": 96,
-      "CN": 97,
-      "+](": 98,
-      "cn": 99
+      "(-": 88,
+      "OCC": 89,
+      "-])": 90,
+      "COc": 91,
+      ")(=": 92,
+      "nH": 93,
+      "([": 94,
+      ")=": 95,
+      "CCN": 96,
+      "Br": 97,
+      "CN": 98,
+      "+](": 99
     },
     "merges": [
       "c c",
@@ -205,6 +187,7 @@
       "N c",
       ") [",
       "- ]",
+      "( -",
       "O CC",
       "-] )",
       "C Oc",
@@ -215,8 +198,7 @@
       "CC N",
       "B r",
       "C N",
-      "+] (",
-      "c n"
+      "+] ("
     ]
   }
 }
