@@ -11,7 +11,7 @@
     },
     "direction": "Right",
     "pad_to_multiple_of": null,
-    "pad_id": 20001,
+    "pad_id": 20002,
     "pad_type_id": 0,
     "pad_token": "<pad>"
   },

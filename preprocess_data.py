@@ -13,7 +13,7 @@ from tqdm import tqdm
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, processors
 
 
-def create_input_files(args, dataset_path, config_output_name, output_name, output_path, img_size):
+def create_input_files(args, dataset_path, config_output_name, output_name, output_path, img_size, dataset_size=4000000):
     '''
     Creates input files for using with models.
     :param dataset_path: the path to the data to be processed
@@ -29,7 +29,9 @@ def create_input_files(args, dataset_path, config_output_name, output_name, outp
         with h5py.File(processed_image_path, 'a') as h:
             images = h.create_dataset('images', (len(data['images']), 3, img_size, img_size), dtype='uint8')
             print('\nReading images and captions, storing to file...\n')
-            for i, cur_data in enumerate(data['images']):
+            for i, cur_data in enumerate(tqdm(data['images'])):
+                if i > dataset_size:
+                    break
                 path = os.path.join(cur_data['filepath'], cur_data['filename'])
                 img = imread(path)
                 if len(img.shape) == 2:
@@ -59,18 +61,20 @@ def create_input_files(args, dataset_path, config_output_name, output_name, outp
 
 def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name, max_length, label_filename):
     data = {"images" : []}
+    start_token_id = tokenizer.encode('<start>').ids[0]
+    end_token_id = tokenizer.encode('<end>').ids[0]
     with open(os.path.join(data_dir, label_filename), "r") as f:
         for i, l in enumerate(tqdm(f)):
             try:
                 smiles, idx = l.strip().split("\t")
                 encoding = tokenizer.encode(smiles)
                 encodingids = encoding.ids
-                encodingids = [1] + encodingids #add <start> token
+                encodingids = [start_token_id] + encodingids #add <start> token
                 if 0 in encodingids:
                     cap_len = encodingids.index(0)+1
                 else:
                     cap_len = max_length
-                encodingids[cap_len-1] = 2 #add <end> token
+                encodingids[cap_len-1] = end_token_id #add <end> token
                 current_sample = {"filepath": data_dir, "filename": "{}".format(idx), "imgid": 0, "split": split, "sentences" : [{"tokens": encoding.tokens, "raw": smiles, "ids": encodingids , "length": cap_len}] } # note if image augmentation ever happens need to introduce a sentence id token. see mscoco json for example
                 data["images"].append(current_sample)
             except:

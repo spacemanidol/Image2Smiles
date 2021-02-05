@@ -73,7 +73,11 @@ echo('Preprocessing Data with Tokenizers for model Training')
 split -n 4 data/training_images/labels.smi
 mv xaa labels1.smi
 mv labels* data/training_images/
-python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/training_images/ --data_split training --image_output_filename training --output_path data/ 
+python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_100.json --output_prefix vocab100 --data_dir /semihot/img2smidata/training_images/ --data_split training --image_output_filename training --output_path data/
+python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_200.json --output_prefix vocab200 --data_dir /semihot/img2smidata/training_images/ --data_split training --image_output_filename training --output_path data/
+python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_500.json --output_prefix vocab500 --data_dir /semihot/img2smidata/training_images/ --data_split training --image_output_filename training --output_path data/
+python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --output_prefix vocab2000 --data_dir /semihot/img2smidata/training_images/ --data_split training --image_output_filename training --output_path data/
+python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_20000.json --output_prefix vocab20000 --data_dir /semihot/img2smidata/training_images/ --data_split training --image_output_filename training --output_path data/ --process_img
 python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/validation_images/ --data_split validation --image_output_filename validation --output_path data/
 python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/evaluation_images/ --data_split evaluation --image_output_filename evaluation --output_path data/ --process_img
 echo('Done preprocessing data. You may move on to model training.')

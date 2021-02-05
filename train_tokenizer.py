@@ -23,7 +23,7 @@ def main(args):
         files = get_smi_files(args.training_files)
         print("Training BPE tokenizer using the following files:{}".format(files))
         tokenizer = Tokenizer(models.BPE(unk_token="<unk>"))
-        tokenizer.enable_padding(pad_id=args.vocab_size+1, pad_token="<pad>", length=args.pad_len)
+        tokenizer.enable_padding(pad_id=args.vocab_size+2, pad_token="<pad>", length=args.pad_len)
         tokenizer.enable_truncation(max_length=args.pad_len,strategy='only_first')
         tokenizer.normalizer = Sequence([NFKC()])
         tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
