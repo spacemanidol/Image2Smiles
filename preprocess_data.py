@@ -75,6 +75,8 @@ def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name,
                 else:
                     cap_len = max_length
                 encodingids[cap_len-1] = end_token_id #add <end> token
+                print(encodingids)
+                input()
                 current_sample = {"filepath": data_dir, "filename": "{}".format(idx), "imgid": 0, "split": split, "sentences" : [{"tokens": encoding.tokens, "raw": smiles, "ids": encodingids , "length": cap_len}] } # note if image augmentation ever happens need to introduce a sentence id token. see mscoco json for example
                 data["images"].append(current_sample)
             except:
