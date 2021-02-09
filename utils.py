@@ -24,7 +24,7 @@ def set_seed(seed: int):
     torch.cuda.manual_seed_all(seed)
     
 class CaptionDataset(Dataset):
-    def __init__(self, data_folder, data_name, transform):
+    def __init__(self, data_folder, data_name, transform, captions_prefix):
         """
         :param data_folder: folder where data files are stored
         :param data_name: base name of processed datasets
@@ -33,10 +33,10 @@ class CaptionDataset(Dataset):
         self.h = h5py.File(os.path.join(data_folder, data_name + '.hdf5'), 'r')
         self.imgs = self.h['images']
         # Load encoded captions (completely into memory)
-        with open(os.path.join(data_folder, 'captions_' + data_name + '.json'), 'r') as j:
+        with open(os.path.join(data_folder, captions_prefix + 'captions_' + data_name + '.json'), 'r') as j:
             self.captions = json.load(j)
         # Load caption lengths (completely into memory)
-        with open(os.path.join(data_folder, 'captions_length_' + data_name + '.json'), 'r') as j:
+        with open(os.path.join(data_folder, captions_prefix + 'captions_length_' + data_name + '.json'), 'r') as j:
             self.caplens = json.load(j)
         # Total number of datapoints
         self.dataset_size = self.h['images'].shape[0]
