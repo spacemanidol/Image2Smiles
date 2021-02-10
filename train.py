@@ -1,4 +1,5 @@
 import time
+import random
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
@@ -101,11 +102,11 @@ def main(args):
     # Custom dataloaders
     print("Loading Datasets")
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
-    train_dataset = CaptionDataset(args.data_dir, 'training', transform=transforms.Compose([normalize]), args.captions_prefix)
-    print("There are {} training data examples".format(len(train_dataset)))
-    val_dataset = CaptionDataset(args.data_dir, 'validation', transform=transforms.Compose([normalize]), args.captions_prefix)
+    #train_dataset = CaptionDataset(args.data_dir, 'training', transforms.Compose([normalize]), args.captions_prefix)
+    #print("There are {} training data examples".format(len(train_dataset)))
+    val_dataset = CaptionDataset(args.data_dir, 'validation', transforms.Compose([normalize]), args.captions_prefix)
     print("There are {} validation data examples".format(len(val_dataset)))
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
+    #train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
     print("Datasets loaded")
     
@@ -117,6 +118,7 @@ def main(args):
         best_bleu4 = cur_bleu4
     print("BLEU Score: {}".format(best_bleu4))
     # Train and validate
+    exit(0)
     print("Traing model")
     
     for epoch in range(start_epoch, args.epochs):
@@ -184,12 +186,21 @@ def validate(encoder, decoder, loader, decoder_optimizer, encoder_optimizer, dev
     top5accs = AverageMeter()
     references, candidates = list(), list()
     with torch.no_grad():
-        for imgs, caps, caplens in tqdm(loader):
+        for data in tqdm(loader):
+            imgs = data[0]
+            caps = data[1]
+            caplens = data[2]
             imgs = imgs.to(device)
             caps = caps.to(device)
             caplens = caplens.to(device)
+            print(imgs)
+            print(caps)
+            print(caplens)
             # Forward pass
-            imgs = encoder(imgs)
+            imgs = encoder(imgs).to(device)
+            print(imgs.shape)
+            h = nn.Linear(2048, 512).to(device)
+            print(h(imgs.mean(dim=1)))
             scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(imgs, caps, caplens)
             scores_copy = scores.clone().to(device)
             targets = caps_sorted[:, 1:] #remove <start> and <end> tokens
