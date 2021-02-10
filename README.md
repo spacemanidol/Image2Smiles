@@ -8,10 +8,11 @@ Note Tokenizers need to be cased.
 ### Setup
 Create your enviorment by running the following commands
 ```bash
-conda create -n molecule_extraction python=3.7
-conda activate molecule_extraction
+conda create -n img2smi python=3.7
+conda activate img2smi
 conda install -c conda-forge rdkit deepchem==2.3.0
-pip install tensorflow-gpu==1.14
+pip install tensorflow-gpu==2.3 torch torchvision tokenizers scipy==1.1.0
+
 ```
 
 ### Data
