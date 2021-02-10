@@ -63,20 +63,21 @@ def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name,
     data = {"images" : []}
     start_token_id = tokenizer.encode('<start>').ids[0]
     end_token_id = tokenizer.encode('<end>').ids[0]
+    pad_token_id = tokenizer.get_vocab_size()
+    print("The <start> token id is:{}\nThe <end> token id is:{}\nThe <pad> token id is {}".format(start_token_id, end_token_id, pad_token_id)) 
     with open(os.path.join(data_dir, label_filename), "r") as f:
         for i, l in enumerate(tqdm(f)):
             try:
                 smiles, idx = l.strip().split("\t")
                 encoding = tokenizer.encode(smiles)
                 encodingids = encoding.ids
-                encodingids = [start_token_id] + encodingids #add <start> token
-                if 0 in encodingids:
-                    cap_len = encodingids.index(0)+1
-                else:
-                    cap_len = max_length
-                encodingids[cap_len-1] = end_token_id #add <end> token
-                print(encodingids)
-                input()
+                encodingids = [start_token_id] + encodingids[:-1] #add <start> token and shorten to 150
+                cap_len = max_length
+                for j in range(0, len(encodingids)):
+                    if encodingids[j] == pad_token_id:
+                        cap_len = j+1
+                        encodingids[j] = end_token_id
+                        break
                 current_sample = {"filepath": data_dir, "filename": "{}".format(idx), "imgid": 0, "split": split, "sentences" : [{"tokens": encoding.tokens, "raw": smiles, "ids": encodingids , "length": cap_len}] } # note if image augmentation ever happens need to introduce a sentence id token. see mscoco json for example
                 data["images"].append(current_sample)
             except:
