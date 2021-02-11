@@ -43,7 +43,7 @@ def main(args):
     decoded = tokenizer.decode(encoding.ids)
     print("Decoded string: {}".format(decoded))
     print("Tokenizer Loaded.")
-    vocab_size = tokenizer.get_vocab_size()
+    vocab_size = tokenizer.get_vocab_size() + 1
     set_seed(args.seed)
     # Load Checkpoint if exists
     start_epoch = 0
@@ -101,12 +101,12 @@ def main(args):
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     # Custom dataloaders
     print("Loading Datasets")
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
-    #train_dataset = CaptionDataset(args.data_dir, 'training', transforms.Compose([normalize]), args.captions_prefix)
-    #print("There are {} training data examples".format(len(train_dataset)))
+    normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5],std=[0.5, 0.5, 0.5])
+    train_dataset = CaptionDataset(args.data_dir, 'training', transforms.Compose([normalize]), args.captions_prefix)
+    print("There are {} training data examples".format(len(train_dataset)))
     val_dataset = CaptionDataset(args.data_dir, 'validation', transforms.Compose([normalize]), args.captions_prefix)
     print("There are {} validation data examples".format(len(val_dataset)))
-    #train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
     print("Datasets loaded")
     
@@ -116,9 +116,9 @@ def main(args):
     cur_bleu4 = validate(encoder, decoder, val_loader, decoder_optimizer, encoder_optimizer, device,  criterion, tokenizer)
     if cur_bleu4 > best_bleu4:
         best_bleu4 = cur_bleu4
+    save_checkpoint(args.model_path, 0, encoder, decoder, encoder_optimizer, decoder_optimizer, cur_bleu4, True)
     print("BLEU Score: {}".format(best_bleu4))
     # Train and validate
-    exit(0)
     print("Traing model")
     
     for epoch in range(start_epoch, args.epochs):
@@ -193,14 +193,7 @@ def validate(encoder, decoder, loader, decoder_optimizer, encoder_optimizer, dev
             imgs = imgs.to(device)
             caps = caps.to(device)
             caplens = caplens.to(device)
-            print(imgs)
-            print(caps)
-            print(caplens)
-            # Forward pass
             imgs = encoder(imgs).to(device)
-            print(imgs.shape)
-            h = nn.Linear(2048, 512).to(device)
-            print(h(imgs.mean(dim=1)))
             scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(imgs, caps, caplens)
             scores_copy = scores.clone().to(device)
             targets = caps_sorted[:, 1:] #remove <start> and <end> tokens
@@ -275,7 +268,7 @@ if __name__ == '__main__':
     parser.add_argument('--load', action='store_true', help='load existing model')
     parser.add_argument('--encoder_lr', default=1e-4, type=float, help='encoder learning rate if fine tuning')
     parser.add_argument('--decoder_lr', default=4e-4, type=float, help='decoder learning rate')
-    parser.add_argument('--lr_update_freq', default=1000, type=int, help='How often to decrease lr')
+    parser.add_argument('--lr_update_freq', default=5000, type=int, help='How often to decrease lr')
     parser.add_argument('--decay_rate', default=.9, type=float, help='how much to update LR by')
     parser.add_argument('--gradient_clip', default=5.0, type=float, help='clip gradients at an abosulte value of')
     parser.add_argument('--alphac', default=1, type=int, help="regularization param")

@@ -41,12 +41,11 @@ class CaptionDataset(Dataset):
             self.caplens = json.load(j)
         # Total number of datapoints
         self.dataset_size = self.h['images'].shape[0]
-        self.transform = transform
+        self.transform = None #transform
         self.cpi = 1
 
     def __getitem__(self, i):
-        # Remember, the Nth caption corresponds to the (N // captions_per_image)th image
-        img = torch.FloatTensor(self.imgs[i // self.cpi] / 255.)
+        img = torch.FloatTensor(self.imgs[i] / 255.)
         if self.transform is not None:
             img = self.transform(img)
         caption = torch.LongTensor(self.captions[i])
