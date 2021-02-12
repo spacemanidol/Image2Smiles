@@ -87,7 +87,7 @@ def main(args):
     
     # Deal With CUDA
     if args.cuda:
-        device = 'cuda:0'
+        device = 'cuda:3'
         cudnn.benchmark = True
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
@@ -138,7 +138,7 @@ def train(args, encoder, decoder, loader, decoder_optimizer, encoder_optimizer, 
     top3accs = AverageMeter()  # top accuracy
     i = 0
     for data in tqdm(loader):
-        if i % args.lr_update_freq == 0:
+        if i % args.lr_update_freq == 0 and i > 0:
             adjust_learning_rate(decoder_optimizer, args.decay_rate)
             if args.fine_tune_encoder:
                 adjust_learning_rate(encoder_optimizer, args.decay_rate)
