@@ -152,7 +152,7 @@ class DecoderWithAttention(nn.Module):
 
         return predictions, encoded_captions, decode_lengths, alphas, sort_ind
 
-    def predict(self, encoder_out, tokenizer, beam_size=3):
+    def predict(self, encoder_out, tokenizer, beam_size=20):
         """
         Caption prediction
         :param encoder_out: encoded images, a tensor of dimension (batch_size, enc_image_size, enc_image_size, encoder_dim)
@@ -160,31 +160,55 @@ class DecoderWithAttention(nn.Module):
         :param beam_size: caption lengths, a tensor of dimension (batch_size, 1)
         :return: a list of possible captions for each image. 
         """
-    def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=3):
-        """
-        Reads an image and captions it with beam search.
-        :param encoder: encoder model
-        :param decoder: decoder model
-        :param image_path: path to image
-        :param word_map: word map
-        :param beam_size: number of sequences to consider at each decode-step
-        :return: caption, weights for visualization
-        """
-        k = beam_size
-        vocab_size = len(word_map)
-        # Read image and process
-        img = imread(image_path)
-        if len(img.shape) == 2:
-            img = img[:, :, np.newaxis]
-            img = np.concatenate([img, img, img], axis=2)
-        img = imresize(img, (256, 256))
-        img = img.transpose(2, 0, 1)
-        img = img / 255.
-        img = torch.FloatTensor(img).to(device)
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                        std=[0.229, 0.224, 0.225])
-        transform = transforms.Compose([normalize])
-        image = transform(img)  # (3, 256, 256)
-        # Encode
-        image = image.unsqueeze(0)  # (1, 3, 256, 256)
-        encoder_out = encoder(image)  # (1, enc_image_size, enc_image_size, encoder_dim)
+        start_token_id = tokenizer.encode('<start>').ids[0]
+        end_token_id = tokenizer.encode('<end>').ids[0]
+        pad_token_id = tokenizer.get_vocab_size()
+        vocab_size = tokenizer.get_vocab_size()+ 1
+        k =  beam_size
+        encoder_out = encoder(img)
+        enc_image_size = encoder_out.size(1)
+        encoder_dim = encoder_out.size(3)# Flatten encoding
+        encoder_out = encoder_out.view(1, -1, encoder_dim)  # (1, num_pixels, encoder_dim)
+        num_pixels = encoder_out.size(1)
+        encoder_out = encoder_out.expand(k, num_pixels, encoder_dim)  # (k, num_pixels, encoder_dim)
+        k_prev_words = torch.LongTensor([[start_token_id]] * k).to(device) # (k, 1)
+        seqs = k_prev_words  # (k, 1)
+        top_k_scores = torch.zeros(k, 1).to(device)  # (k, 1)
+        complete_seqs = list()
+        complete_seqs_scores = list()
+        step = 1
+        h, c = decoder.init_hidden_state(encoder_out)
+        while True:
+            embeddings = decoder.embedding(k_prev_words).squeeze(1)  # (s, embed_dim)
+            awe, alpha = decoder.attention(encoder_out, h)  # (s, encoder_dim), (s, num_pixels)
+            gate = decoder.sigmoid(decoder.f_beta(h))  # gating scalar, (s, encoder_dim)
+            h, c = decoder.decode_step(torch.cat([embeddings, gate * awe], dim=1), (h, c))  # (s, decoder_dim)
+            scores = decoder.fc(h)  # (s, vocab_size)
+            scores = F.log_softmax(scores, dim=1)
+            scores = top_k_scores.expand_as(scores) + scores  # (s, vocab_size)
+            if step == 1:
+                top_k_scores, top_k_words = scores[0].topk(k, 0, True, True)   # For the first step, all k points will have the same scores (since same k previous words, h, c)
+            else:
+                top_k_scores, top_k_words = scores.view(-1).topk(k, 0, True, True)  # Unroll and find top scores, and their unrolled indices
+            next_word_inds = top_k_words % vocab_size  #  Convert unrolled indices to actual indices of scores
+            seqs = torch.cat([seqs, next_word_inds.unsqueeze(1)], dim=1)  # (s, step+1)
+            incomplete_inds = [ind for ind, next_word in enumerate(next_word_inds) if next_word != end_token_id] # Which sequences are incomplete (didn't reach <end>)?
+            complete_inds = list(set(range(len(next_word_inds))) - set(incomplete_inds)) # Set aside complete sequences
+            if len(complete_inds) > 0:
+                complete_seqs.extend(seqs[complete_inds].tolist())
+                complete_seqs_scores.extend(top_k_scores[complete_inds])
+            k -= len(complete_inds)  # reduce beam length accordingly
+            if k == 0:
+                break
+            seqs = seqs[incomplete_inds]
+            h = h[incomplete_inds]
+            c = c[incomplete_inds]
+            encoder_out = encoder_out[incomplete_inds]
+            top_k_scores = top_k_scores[incomplete_inds].unsqueeze(1)
+            k_prev_words = next_word_inds[incomplete_inds].unsqueeze(1)
+            if step > 150:
+                break
+            step += 1
+        i = complete_seqs_scores.index(max(complete_seqs_scores))
+        top = tokenizer.decode(complete_seqs[i])
+        return top, complete_seqs_scores, complete_seqs
