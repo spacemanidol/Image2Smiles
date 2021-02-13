@@ -177,6 +177,8 @@ def train(args, encoder, decoder, loader, decoder_optimizer, encoder_optimizer, 
         # Print status
         if i % args.print_freq == 0:
             print('Loss {loss.val:.4f} ({loss.avg:.4f})\t''Top-3 Accuracy {top3.val:.3f} ({top3.avg:.3f})'.format(loss=losses,top3=top3accs))
+        if i % args.checkpoint_freq == 0 and args.checkpoint_freq > 0:
+            save_checkpoint(args.model_path, i, encoder, decoder, encoder_optimizer, decoder_optimizer, 0, False)
         i += 1
                 
 def validate(encoder, decoder, loader, decoder_optimizer, encoder_optimizer, device, criterion, tokenizer):
@@ -268,7 +270,7 @@ if __name__ == '__main__':
     parser.add_argument('--load', action='store_true', help='load existing model')
     parser.add_argument('--encoder_lr', default=4e-4, type=float, help='encoder learning rate if fine tuning')
     parser.add_argument('--decoder_lr', default=4e-4, type=float, help='decoder learning rate')
-    parser.add_argument('--lr_update_freq', default=5000, type=int, help='How often to decrease lr')
+    parser.add_argument('--lr_update_freq', default=1000, type=int, help='How often to decrease lr')
     parser.add_argument('--decay_rate', default=.9, type=float, help='how much to update LR by')
     parser.add_argument('--gradient_clip', default=5.0, type=float, help='clip gradients at an abosulte value of')
     parser.add_argument('--alphac', default=1, type=int, help="regularization param")
@@ -277,5 +279,6 @@ if __name__ == '__main__':
     parser.add_argument('--print_freq', default=5000, type=int, help="print loss and top5 acc every n batches")
     parser.add_argument('--seed', default=42, type=int, help='Set random seed')
     parser.add_argument('--cuda_device', default='cuda:0', type=str, help='cuda device to use. aka gpu')
+    parser.add_argument('--checkpoint_freq', default=5000, type=int, help='how often to checkpoint model')
     args = parser.parse_args()
     main(args)
