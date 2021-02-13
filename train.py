@@ -87,7 +87,7 @@ def main(args):
     
     # Deal With CUDA
     if args.cuda:
-        device = 'cuda:3'
+        device = args.cuda_device
         cudnn.benchmark = True
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
@@ -266,7 +266,7 @@ if __name__ == '__main__':
     parser.add_argument('--cuda', action='store_true', help='use CUDA')
     parser.add_argument('--model_path', default='models/', type=str, help='model path')
     parser.add_argument('--load', action='store_true', help='load existing model')
-    parser.add_argument('--encoder_lr', default=1e-4, type=float, help='encoder learning rate if fine tuning')
+    parser.add_argument('--encoder_lr', default=4e-4, type=float, help='encoder learning rate if fine tuning')
     parser.add_argument('--decoder_lr', default=4e-4, type=float, help='decoder learning rate')
     parser.add_argument('--lr_update_freq', default=5000, type=int, help='How often to decrease lr')
     parser.add_argument('--decay_rate', default=.9, type=float, help='how much to update LR by')
@@ -276,5 +276,6 @@ if __name__ == '__main__':
     parser.add_argument('--fine_tune_encoder', action='store_true', help='fine tune encoder')
     parser.add_argument('--print_freq', default=5000, type=int, help="print loss and top5 acc every n batches")
     parser.add_argument('--seed', default=42, type=int, help='Set random seed')
+    parser.add_argument('--cuda_device', default='cuda:0', type=str, help='cuda device to use. aka gpu')
     args = parser.parse_args()
     main(args)
