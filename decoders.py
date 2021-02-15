@@ -1,7 +1,8 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 import torchvision
-#device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+
 class Attention(nn.Module):
     """
     Attention Network.
@@ -152,7 +153,7 @@ class DecoderWithAttention(nn.Module):
 
         return predictions, encoded_captions, decode_lengths, alphas, sort_ind
 
-    def predict(self, encoder_out, tokenizer, beam_size=20):
+    def predict(self, encoder_out, tokenizer, beam_size,device):
         """
         Caption prediction
         :param encoder_out: encoded images, a tensor of dimension (batch_size, enc_image_size, enc_image_size, encoder_dim)
@@ -165,25 +166,24 @@ class DecoderWithAttention(nn.Module):
         pad_token_id = tokenizer.get_vocab_size()
         vocab_size = tokenizer.get_vocab_size()+ 1
         k =  beam_size
-        encoder_out = encoder(img)
         enc_image_size = encoder_out.size(1)
         encoder_dim = encoder_out.size(3)# Flatten encoding
         encoder_out = encoder_out.view(1, -1, encoder_dim)  # (1, num_pixels, encoder_dim)
         num_pixels = encoder_out.size(1)
-        encoder_out = encoder_out.expand(k, num_pixels, encoder_dim)  # (k, num_pixels, encoder_dim)
+        encoder_out = encoder_out.expand(k, num_pixels, encoder_dim).to(device)  # (k, num_pixels, encoder_dim)
         k_prev_words = torch.LongTensor([[start_token_id]] * k).to(device) # (k, 1)
         seqs = k_prev_words  # (k, 1)
         top_k_scores = torch.zeros(k, 1).to(device)  # (k, 1)
         complete_seqs = list()
         complete_seqs_scores = list()
         step = 1
-        h, c = decoder.init_hidden_state(encoder_out)
+        h, c = self.init_hidden_state(encoder_out)
         while True:
-            embeddings = decoder.embedding(k_prev_words).squeeze(1)  # (s, embed_dim)
-            awe, alpha = decoder.attention(encoder_out, h)  # (s, encoder_dim), (s, num_pixels)
-            gate = decoder.sigmoid(decoder.f_beta(h))  # gating scalar, (s, encoder_dim)
-            h, c = decoder.decode_step(torch.cat([embeddings, gate * awe], dim=1), (h, c))  # (s, decoder_dim)
-            scores = decoder.fc(h)  # (s, vocab_size)
+            embeddings = self.embedding(k_prev_words).squeeze(1)  # (s, embed_dim)
+            awe, alpha = self.attention(encoder_out, h)  # (s, encoder_dim), (s, num_pixels)
+            gate = self.sigmoid(self.f_beta(h))  # gating scalar, (s, encoder_dim)
+            h, c = self.decode_step(torch.cat([embeddings, gate * awe], dim=1), (h, c))  # (s, decoder_dim)
+            scores = self.fc(h)  # (s, vocab_size)
             scores = F.log_softmax(scores, dim=1)
             scores = top_k_scores.expand_as(scores) + scores  # (s, vocab_size)
             if step == 1:
@@ -210,5 +210,5 @@ class DecoderWithAttention(nn.Module):
                 break
             step += 1
         i = complete_seqs_scores.index(max(complete_seqs_scores))
-        top = tokenizer.decode(complete_seqs[i])
-        return top, complete_seqs_scores, complete_seqs
+        top = tokenizer.decode(complete_seqs[i][1:-1]) #remove start and end token
+        return top

@@ -22,20 +22,20 @@ from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, pr
 from encoders import Resnet101Encoder
 from decoders import DecoderWithAttention
 
-def predict_captions(args, encoder, decoder, tokenizer, image_path, transform):
+def predict_captions(args, encoder, decoder, tokenizer, path, transform,device):
     img = imread(path)
     if len(img.shape) == 2:
         img = img[:, :, np.newaxis]
         img = np.concatenate([img, img, img], axis=2)
     img = imresize(img, (args.img_size, args.img_size))
     img = img.transpose(2, 0, 1)
-    assert img.shape == (3, img_size, img_size)
+    assert img.shape == (3, args.img_size, args.img_size)
     assert np.max(img) <= 255
     img  = torch.FloatTensor(img/255.)
     img = transform(img)
-    img = torch.stack([img])
-    encoder_out = encoder(img)
-    top, scores, seqs = decoder.predict( encoder_out, tokenizer, args.beam_size):
+    img = torch.stack([img]).to(device)
+    encoder_out = encoder(img).to(device)
+    top = decoder.predict(encoder_out, tokenizer, args.beam_size,device)
     return top
 
 
@@ -62,11 +62,10 @@ def main(args):
     
     # Deal With CUDA
     if args.cuda:
-        device = 'cuda:0'
+        device = args.cuda_device
         cudnn.benchmark = True
     else:
         device = 'cpu'
-
     decoder = decoder.to(device)
     encoder = encoder.to(device)
     decoder.eval()
@@ -80,21 +79,19 @@ def main(args):
             with open(args.output,'w') as w:
                 for i, l in enumerate(tqdm(f)):
                     path = os.path.join(args.directory_path,l.strip())
-                    top, scores, seqs = predict_captions(args, encoder, decoder, tokenizer,  path, transform)
+                    top = predict_captions(args, encoder, decoder, tokenizer,  path, transform, device)
                     w.write("{}\t{}\n".format(top, l.strip()))
     print("Done Predicting")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Predict Smiles Given an input image')
-    parser.add_argument('--images_to_predict', default='tmptype=str, help='a file indicating what images to predict. One png name per line')
+    parser.add_argument('--images_to_predict', default=None, type=str, help='a file indicating what images to predict. One png name per line')
     parser.add_argument('--directory_path', type=str, help='directory of images to predict')
     parser.add_argument('--beam_size', type=int, default=20, help='Beam size for candidate generation')
     parser.add_argument('--img_size', type=int, default=256, help='Image')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')
     parser.add_argument('--output', type=str, default='output.txt', help='file name to produce model predictions for each image.')
     parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer name in the folder tokenizers/')
-    parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')
-    parser.add_argument('--num_workers', default=8, type=int, help='Workers for data loading')
     parser.add_argument('--encoder_type', default='RESNET101', type=str, help='Type of encoder architecture', choices=['RESNET101'])
     parser.add_argument('--decoder_type', default='LSTM+Attention', type=str, help='Type of decoder architecture', choices=['LSTM+Attention'])
     parser.add_argument('--cuda', action='store_true', help='use CUDA')

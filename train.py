@@ -30,8 +30,6 @@ def save_checkpoint(model_path, epoch, encoder, decoder, encoder_optimizer, deco
              'decoder_optimizer': decoder_optimizer}
     filename = model_path + 'checkpoint_' + str(epoch)
     torch.save(state, filename)
-    if is_best:
-        torch.save(state, model_path + '_BEST')
 
 def main(args):
     # Load Tokenizer
@@ -279,6 +277,6 @@ if __name__ == '__main__':
     parser.add_argument('--print_freq', default=5000, type=int, help="print loss and top5 acc every n batches")
     parser.add_argument('--seed', default=42, type=int, help='Set random seed')
     parser.add_argument('--cuda_device', default='cuda:0', type=str, help='cuda device to use. aka gpu')
-    parser.add_argument('--checkpoint_freq', default=5000, type=int, help='how often to checkpoint model')
+    parser.add_argument('--checkpoint_freq', default=1000, type=int, help='how often to checkpoint model')
     args = parser.parse_args()
     main(args)
