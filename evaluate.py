@@ -26,7 +26,10 @@ def load_img2smi(filename):
     with open(filename,'r') as f:
         for l in f:
             l = l.strip().split('\t')
-            img2smi[l[1]] = l[0]
+            if '.' in l[0]: #No smiles generated so just an extension
+                img2smi[l[0]] = 'NONE'
+            else:
+                img2smi[l[1]] = l[0]
             if l[0] == 'NONE':
                 count += 1
             else:
@@ -35,7 +38,6 @@ def load_img2smi(filename):
                     img2smi[l[1]] = Chem.MolToSmiles(mol, True) #ensure we generate canonical smile
                 except:
                     pass
-            count += 1 #Made it this far so valid smi
     print("Done loading file {}".format(filename))
     return img2smi, count
 
@@ -190,7 +192,7 @@ def maacs_fingerprint_evaluation(references, candidates):
 def main(args):
     reference_img2smi, _ = load_img2smi(args.reference_file)
     candidate_img2smi, count = load_img2smi(args.candidate_file)
-    percent_candidate_molecules_captioned = 1 - (count/len(reference_img2smi))
+    percent_candidate_molecules_captioned =  1 - (count/len(reference_img2smi))
     reference_mols, _ = convert_smi_to_mol(reference_img2smi, args.reference_file)
     candidate_mols, count = convert_smi_to_mol(candidate_img2smi, args.candidate_file)
     percent_candidate_valid_molecules_captioned = (count/len(reference_img2smi))
@@ -200,22 +202,22 @@ def main(args):
     rd_score = rd_fingerprint_evaluation(reference_mols, candidate_mols)
     morgan_score = morgan_fingerprint_evaluation(reference_mols, candidate_mols)
     with open(args.output_file, 'w') as w:
-        w.write("Reference File:{}".format(args.reference_file))
-        w.write("Candidate File:{}".format(args.candidate_file))
-        w.write("Percent Captions Generated:{}".format(round(percent_candidate_molecules_captioned,4)))
-        w.write("Percent Valid SMI Generated:{}".format(round(percent_candidate_valid_molecules_captioned,4)))
-        w.write("Levenshtein Distance:{}".format(levenshtein_distance))
-        w.write("BLEU-1 using {} tokenizer:{}".format(args.tokenizer, bleu_score))
-        w.write("MACCS Fingerprinting Tanimoto Similarity:{}".format(maccs_score))
-        w.write("RD Path Fingerprinting Tanimoto Similarity:{}".format(rd_score))
-        w.write("Morgan Fingerprint Tanimoto Similarity".format(morgan_score))
+        w.write("Reference File:{}\n".format(args.reference_file))
+        w.write("Candidate File:{}\n".format(args.candidate_file))
+        w.write("Percent Captions Generated:{}\n".format(round(percent_candidate_molecules_captioned,4)))
+        w.write("Percent Valid SMI Generated:{}\n".format(round(percent_candidate_valid_molecules_captioned,4)))
+        w.write("Levenshtein Distance:{}\n".format(levenshtein_distance))
+        w.write("BLEU-1 using {} tokenizer:{}\n".format(args.tokenizer, bleu_score))
+        w.write("MACCS Fingerprinting Tanimoto Similarity:{}\n".format(maccs_score))
+        w.write("RD Path Fingerprinting Tanimoto Similarity:{}\n".format(rd_score))
+        w.write("Morgan Fingerprint Tanimoto Similarity:{}\n".format(morgan_score))
     return 0
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Evaluate smiles captioning')
-    parser.add_argument('--reference_file', type=str, default='exp/references_validation0-1000.txt', help='reference img2smi file which is a tsv with SMI\tIMG.PNG')
-    parser.add_argument('--candidate_file', type=str, default='exp/osra_validation0-1000.txt', help='candidate img2smi file which is a tsv with SMI\tIMG.PNG')
-    parser.add_argument('--output_file', type=str, default ='eval_results.txt', help='Filename where eval results will be written')
+    parser.add_argument('--reference_file', type=str, default='exp/references_validation.txt', help='reference img2smi file which is a tsv with SMI\tIMG.PNG')
+    parser.add_argument('--candidate_file', type=str, default='exp/osra_validation.txt', help='candidate img2smi file which is a tsv with SMI\tIMG.PNG')
+    parser.add_argument('--output_file', type=str, default ='exp/osra_validation_results.txt', help='Filename where eval results will be written')
     parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer to use in BLEU evaluation')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with') 
     args = parser.parse_args()
