@@ -1,6 +1,6 @@
 Reference File:exp/references_validation.txt
 Candidate File:exp/vocab100_finetune_results
-Percent Captions Generated:1.0
+Percent Captions Generated:0.998
 Percent Valid SMI Generated:0.071
 Levenshtein Distance:34.511
 BLEU-1 using tokenizers/tokenizer_vocab_100.json tokenizer:0.0341

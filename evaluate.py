@@ -28,6 +28,8 @@ def load_img2smi(filename):
             l = l.strip().split('\t')
             if '.' in l[0]: #No smiles generated so just an extension
                 img2smi[l[0]] = 'NONE'
+                count += 1
+                print("HERE")
             else:
                 img2smi[l[1]] = l[0]
             if l[0] == 'NONE':
