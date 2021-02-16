@@ -12,9 +12,7 @@ import os
 import argparse
 from tqdm import tqdm
 
-
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, processors
-
 
 from encoders import Resnet101Encoder
 from decoders import DecoderWithAttention
