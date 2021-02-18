@@ -35,8 +35,7 @@ def predict_captions(args, encoder, decoder, tokenizer, path, transform,device):
     img = transform(img)
     img = torch.stack([img]).to(device)
     encoder_out = encoder(img).to(device)
-    top = decoder.predict(encoder_out, tokenizer, args.beam_size,device)
-    return top
+    return decoder.predict(encoder_out, tokenizer, args.beam_size, args.branch_rounds, args.branch_factor, args.branches_to_expand, device)
 
 
 def main(args):
@@ -88,6 +87,9 @@ if __name__ == '__main__':
     parser.add_argument('--images_to_predict', default=None, type=str, help='a file indicating what images to predict. One png name per line')
     parser.add_argument('--directory_path', type=str, help='directory of images to predict')
     parser.add_argument('--beam_size', type=int, default=20, help='Beam size for candidate generation')
+    parser.add_argument('--branch_rounds', type=int, default=5, help='Branch round for expanding beam')
+    parser.add_argument('--branch_factor', type=int, default=5, help='How much to branch every beam by')
+    parser.add_argument('--branches_to_expand', type=int, default=5, help='How many top branches to expand')
     parser.add_argument('--img_size', type=int, default=256, help='Image')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')
     parser.add_argument('--output', type=str, default='output.txt', help='file name to produce model predictions for each image.')

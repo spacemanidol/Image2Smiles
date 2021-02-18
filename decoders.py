@@ -3,6 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 import torchvision
 
+from rdkit import Chem
+
 class Attention(nn.Module):
     """
     Attention Network.
@@ -153,12 +155,16 @@ class DecoderWithAttention(nn.Module):
 
         return predictions, encoded_captions, decode_lengths, alphas, sort_ind
 
-    def predict(self, encoder_out, tokenizer, beam_size,device):
+    def predict(self, encoder_out, tokenizer, beam_size, branch_rounds, branch_factor, branches_to_expand, device):
         """
         Caption prediction
         :param encoder_out: encoded images, a tensor of dimension (batch_size, enc_image_size, enc_image_size, encoder_dim)
         :param tokenizer: a BPE tokenizer 
         :param beam_size: caption lengths, a tensor of dimension (batch_size, 1)
+        :param branch rounds: how many times do we branch top beams
+        :param branch_factor: how many branches will each beam fork have
+        :param branches_to_expand: how many beams to branch
+        :param device: 
         :return: a list of possible captions for each image. 
         """
         start_token_id = tokenizer.encode('<start>').ids[0]
@@ -180,17 +186,38 @@ class DecoderWithAttention(nn.Module):
         h, c = self.init_hidden_state(encoder_out)
         while True:
             embeddings = self.embedding(k_prev_words).squeeze(1)  # (s, embed_dim)
-            awe, alpha = self.attention(encoder_out, h)  # (s, encoder_dim), (s, num_pixels)
+            awe, _ = self.attention(encoder_out, h)  # (s, encoder_dim), (s, num_pixels)
             gate = self.sigmoid(self.f_beta(h))  # gating scalar, (s, encoder_dim)
             h, c = self.decode_step(torch.cat([embeddings, gate * awe], dim=1), (h, c))  # (s, decoder_dim)
             scores = self.fc(h)  # (s, vocab_size)
             scores = F.log_softmax(scores, dim=1)
             scores = top_k_scores.expand_as(scores) + scores  # (s, vocab_size)
             if step == 1:
-                top_k_scores, top_k_words = scores[0].topk(k, 0, True, True)   # For the first step, all k points will have the same scores (since same k previous words, h, c)
+                top_k_scores, top_k_words = scores[0].topk(k, 0, True, True)   # For the first step, all k points will have the same scores (since same k previous words, h, c)                
             else:
                 top_k_scores, top_k_words = scores.view(-1).topk(k, 0, True, True)  # Unroll and find top scores, and their unrolled indices
+                _, expand_index = torch.topk(top_k_scores, branches_to_expand, dim=0) 
             next_word_inds = top_k_words % vocab_size  #  Convert unrolled indices to actual indices of scores
+            if step > 2 and branch_rounds > 0:
+                branch_rounds -= 1 
+                for i in range(0, len(expand_index)):
+                    next_beam_scores, next_beam_words = scores[expand_index[i]].topk(branch_factor+1)
+                    in_play = [ind for ind, next_word in enumerate(next_beam_words) if next_word != next_word_inds[expand_index[i]]]
+                    next_beam_scores = next_beam_scores[in_play]
+                    next_beam_words = next_beam_words[in_play]
+                    seq_to_add = torch.stack([seqs[expand_index[i]]])
+                    h_to_add = torch.stack([h[expand_index[i]]])
+                    c_to_add = torch.stack([c[expand_index[i]]])
+                    encoder_to_add = torch.stack([encoder_out[expand_index[i]]])
+                    score_to_add = torch.stack([top_k_scores[expand_index[i]]])
+                    for j in range(0, branch_factor):
+                        k+= 1
+                        seqs = torch.cat([seqs, seq_to_add])
+                        next_word_inds = torch.cat([next_word_inds, torch.stack([next_beam_words[j]])] )
+                        h = torch.cat([h, h_to_add])
+                        c = torch.cat([c, c_to_add])
+                        encoder_out = torch.cat([encoder_out, encoder_to_add])
+                        top_k_scores = torch.cat([top_k_scores, score_to_add])
             seqs = torch.cat([seqs, next_word_inds.unsqueeze(1)], dim=1)  # (s, step+1)
             incomplete_inds = [ind for ind, next_word in enumerate(next_word_inds) if next_word != end_token_id] # Which sequences are incomplete (didn't reach <end>)?
             complete_inds = list(set(range(len(next_word_inds))) - set(incomplete_inds)) # Set aside complete sequences
@@ -209,6 +236,16 @@ class DecoderWithAttention(nn.Module):
             if step > 150:
                 break
             step += 1
-        i = complete_seqs_scores.index(max(complete_seqs_scores))
-        top = tokenizer.decode(complete_seqs[i][1:-1]) #remove start and end token
+        mol_index = np.argsort(complete_seqs_scores)
+        real_molecules = []
+        for i in mol_indexs:
+            try:
+                smi = tokenizer.decode(complete_seqs[i][1:-1]) #remove start and end token
+                mol = Chem.MolFromSmiles(smi)
+                can_smi = Chem.MolToSmiles(mol, True) 
+                if len(can_smi) > 1
+                    real_molecules.append(can_smi)
+            except:
+                pass
+        print(real_molecules)
         return top

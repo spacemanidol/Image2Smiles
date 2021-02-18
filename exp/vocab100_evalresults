@@ -4,6 +4,6 @@ Percent Captions Generated:0.998
 Percent Valid SMI Generated:0.071
 Levenshtein Distance:34.511
 BLEU-1 using tokenizers/tokenizer_vocab_100.json tokenizer:0.0341
-MACCS Fingerprinting Tanimoto Similarity:0.0403
-RD Path Fingerprinting Tanimoto Similarity:0.0234
-Morgan Fingerprint Tanimoto Similarity:0.0243
+MACCS Fingerprinting Tanimoto Similarity:0.5678
+RD Path Fingerprinting Tanimoto Similarity:0.3292
+Morgan Fingerprint Tanimoto Similarity:0.3427
