@@ -79,6 +79,8 @@ def main(args):
                 for i, l in enumerate(tqdm(f)):
                     path = os.path.join(args.directory_path,l.strip())
                     top = predict_captions(args, encoder, decoder, tokenizer,  path, transform, device)
+                    if len(top) > 0:
+                        top = top[0]
                     w.write("{}\t{}\n".format(top, l.strip()))
     print("Done Predicting")
 

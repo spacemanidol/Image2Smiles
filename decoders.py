@@ -4,6 +4,8 @@ import torch.nn.functional as F
 import torchvision
 
 from rdkit import Chem
+import numpy as np
+from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, processors
 
 class Attention(nn.Module):
     """
@@ -195,8 +197,10 @@ class DecoderWithAttention(nn.Module):
             if step == 1:
                 top_k_scores, top_k_words = scores[0].topk(k, 0, True, True)   # For the first step, all k points will have the same scores (since same k previous words, h, c)                
             else:
+                #print("{}\t{}\t{}\t{}".format(k,step, branches_to_expand, top_k_scores))
                 top_k_scores, top_k_words = scores.view(-1).topk(k, 0, True, True)  # Unroll and find top scores, and their unrolled indices
-                _, expand_index = torch.topk(top_k_scores, branches_to_expand, dim=0) 
+                if branch_rounds > 0:
+                    _, expand_index = torch.topk(top_k_scores, branches_to_expand, dim=0) 
             next_word_inds = top_k_words % vocab_size  #  Convert unrolled indices to actual indices of scores
             if step > 2 and branch_rounds > 0:
                 branch_rounds -= 1 
@@ -238,14 +242,14 @@ class DecoderWithAttention(nn.Module):
             step += 1
         mol_index = np.argsort(complete_seqs_scores)
         real_molecules = []
-        for i in mol_indexs:
+        for i in mol_index:
             try:
                 smi = tokenizer.decode(complete_seqs[i][1:-1]) #remove start and end token
                 mol = Chem.MolFromSmiles(smi)
                 can_smi = Chem.MolToSmiles(mol, True) 
-                if len(can_smi) > 1
+                if len(can_smi) > 1:
                     real_molecules.append(can_smi)
             except:
                 pass
         print(real_molecules)
-        return top
+        return real_molecules
