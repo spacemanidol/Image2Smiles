@@ -69,7 +69,7 @@ def levenshtein_eval(references, candidates):
         candidate_smi = ''
         if img in candidates:
             candidate_smi = candidates[img]
-        distances.append(Levenshtein.distance(references[img], candidates[img]))
+        distances.append(Levenshtein.distance(references[img], candidate_smi))
     print("Donte Calculating Levenshtein Distance.")
     print("Average Distance:{}".format(round(np.mean(distances),4)))
     return round(np.mean(distances),4)
