@@ -1,0 +1,9 @@
+Reference File:exp/references_validation.txt
+Candidate File:exp/vocab2000_beam50_branchfacto5_brachround10_branchestoexpand25
+Percent Captions Generated:1.0
+Percent Valid SMI Generated:0.176
+Levenshtein Distance:42.564
+BLEU-1 using tokenizers/tokenizer_vocab_2000.json tokenizer:0.008
+MACCS Fingerprinting Tanimoto Similarity:0.1432
+RD Path Fingerprinting Tanimoto Similarity:0.0288
+Morgan Fingerprint Tanimoto Similarity:0.0547
