@@ -1,6 +1,15 @@
 # big files
 data/*.hdf5
 data/*.json
+data/SELFIES_FILES/
+data/SMILES_BASED/
+data/SMI_files/
+data/evaluation_images/
+data/tmp/
+data/training_images/
+data/uspto-validation-updated/
+data/validation_images/
+
 __pycache__
 cache/*
 models/*
