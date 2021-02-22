@@ -1,5 +1,6 @@
 # big files
-data/*
+data/*.hdf5
+data/*.json
 __pycache__
 cache/*
 models/*
