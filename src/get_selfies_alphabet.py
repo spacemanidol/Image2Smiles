@@ -1,5 +1,5 @@
 import os
-import import argparse
+import argparse
 import selfies as sf
 
 dataset = ['[C][O][C]', '[F][C][F]', '[O][=O]', '[C][C][O][C][C]']
@@ -21,7 +21,7 @@ def load_selfies(directory):
 
 def main(args):
     # Load Tokenizer
-    print("Loading selfied in directory: {}.".format(args.source_directory))
+    print("Loading selfied in directory: {}.".format(args.directory))
     selfies = load_selfies(args.directory)
     print("Extracting alphabet from smiles samples")
     print("The longest sample in dataset is {}".format(max(sf.len_selfies(s) for s in selfies)))
