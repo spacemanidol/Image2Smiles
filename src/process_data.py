@@ -50,7 +50,10 @@ def create_input_files(args, dataset_path, config_output_name, output_name, outp
                 caption_lengths.append(cur_data['sentences'][0]['length'])
                 selfies.append(cur_data['sentences'][0]['selfies_ids'])
                 selfies_lengths.append(cur_data['sentences'][0]['selfies_length'])
-
+        with open(os.path.join(output_path, 'selfies_captions_' + output_name + '.json'), 'w') as j:
+            json.dump(selfies, j)
+        with open(os.path.join(output_path, 'selfies_captions_length_' + output_name + '.json'), 'w') as j:
+            json.dump(selfies_lengths, j)
     else:
         print("Just processing captions")
         for i, cur_data in enumerate(data['images']):
@@ -64,16 +67,10 @@ def create_input_files(args, dataset_path, config_output_name, output_name, outp
     with open(os.path.join(output_path, args.output_prefix + 'captions_' + output_name + '.json'), 'w') as j:
         json.dump(captions, j)
 
-    with open(os.path.join(output_path, args.output_prefix + 'selfies_captions_' + output_name + '.json'), 'w') as j:
-        json.dump(selfies, j)
-    
-    with open(os.path.join(output_path, args.output_prefix + 'selfies_captions_length_' + output_name + '.json'), 'w') as j:
-        json.dump(selfies_lengths, j)
-
     with open(os.path.join(output_path, args.output_prefix + 'captions_length_' + output_name + '.json'), 'w') as j:
         json.dump(caption_lengths, j)
 
-def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name, max_length, label_filename):
+def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name, max_length, label_filename, idx2selfies, selfies2idx):
     data = {"images" : []}
     start_token_id = tokenizer.encode('<start>').ids[0]
     end_token_id = tokenizer.encode('<end>').ids[0]
@@ -85,12 +82,12 @@ def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name,
                 smiles, idx = l.strip().split("\t")
                 encoding = tokenizer.encode(smiles)
                 selfies = sf.encoder(smiles)
-                if selfies = None:
+                if selfies == None:
                     selfies = ''
-                selfies_cap = [selfies2idx['[start]']] + [selfies2idx[i] for i in sf.split_selfies(s)]
+                selfies_cap = [selfies2idx['[start]']] + [selfies2idx[i] for i in sf.split_selfies(selfies)]
                 if len(selfies_cap) > max_length-1:
                     selfies_cap = selfies_cap[:max_length-1]
-                selfies_cap = selfies_cap + selfies2idx['[end]']]
+                selfies_cap = selfies_cap + [selfies2idx['[end]']]
                 selfies_len = len(selfies_cap)
                 selfies_len_orig = selfies_len
                 while selfies_len < max_length:
@@ -105,8 +102,6 @@ def create_tokenized_smiles_json(tokenizer, data_dir, split, config_output_name,
                         encodingids[j] = end_token_id
                         break
                 current_sample = {"filepath": data_dir, "filename": "{}".format(idx), "imgid": 0, "split": split, "sentences" : [{"tokens": encoding.tokens, "raw": smiles, "ids": encodingids , "length": cap_len, "selfies_raw": selfies, "selfies_ids": selfies_cap, "selfies_length":selfies_len_orig }] } # note if image augmentation ever happens need to introduce a sentence id token. see mscoco json for example
-                print(current_sample)
-                exit(-1)
                 data["images"].append(current_sample)
             except:
                 pass
@@ -138,7 +133,7 @@ def main(args):
 
     # Create tokenized captions
     print("Creating JSON")
-    create_tokenized_smiles_json(tokenizer, args.data_dir, args.data_split, args.config_output_name, args.max_length, args.label_filenam, idx2selfies, selfies2idx)
+    create_tokenized_smiles_json(tokenizer, args.data_dir, args.data_split, args.config_output_name, args.max_length, args.label_filename, idx2selfies, selfies2idx)
     print("JSON created")
 
     # Save Images and processed Captions
@@ -153,7 +148,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_length', type=int, default=150, help='Max length of tokenized smiles')
     parser.add_argument('--img_size', type=int, default=256, help='Size of image X and Y dimensions')
     parser.add_argument('--label_filename', type=str, default='labels.smi', help='name of labels file in case dataset is enourmous')
-    parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer name in the folder tokenizers/')
+    parser.add_argument('--tokenizer', default='data/tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer name in the folder tokenizers/')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')
     parser.add_argument('--data_dir', default='data/validation_images', type=str, help='directory of data to be processed. Expect a labels.smi file and associated images')
     parser.add_argument('--data_split', default='validation', type=str, help='name of the portion of data being processed. Typical names are training, validation, and evaluation.')

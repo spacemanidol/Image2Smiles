@@ -28,6 +28,16 @@ def save_checkpoint(model_path, epoch, encoder, decoder, encoder_optimizer, deco
              'decoder_optimizer': decoder_optimizer}
     filename = model_path + 'checkpoint_' + str(epoch)
     torch.save(state, filename)
+def load_selfies_vocab(input_file):
+    idx2selfies, selfies2idx = {}, {}
+    idx = 0
+    with open(input_file) as f:
+        for l in f:
+            l = l.strip()
+            idx2selfies[idx] = l
+            selfies2idx[l] = idx
+            idx += 1
+    return idx2selfies, selfies2idx
 
 def main(args):
     # Load Tokenizer
@@ -39,7 +49,12 @@ def main(args):
     decoded = tokenizer.decode(encoding.ids)
     print("Decoded string: {}".format(decoded))
     print("Tokenizer Loaded.")
-    vocab_size = tokenizer.get_vocab_size() + 1
+    if args.use_selfies:
+        idx2selfies, selfies2idx = load_selfies_vocab(args.selfies_vocab)
+        vocab_size = len(idx2selfies)
+    else:
+        vocab_size = tokenizer.get_vocab_size() + 1
+    
     set_seed(args.seed)
     # Load Checkpoint if exists
     start_epoch = 0
@@ -86,8 +101,8 @@ def main(args):
         device = args.cuda_device
         cudnn.benchmark = True
         if torch.cuda.device_count() > 1:
-            print("Let's use", torch.cuda.device_count(), "GPUs!")
-        #encoder = torch.nn.DataParallel(encoder)
+            print("There are ", torch.cuda.device_count(), "GPUs!")
+        #encoder = torch.nn.DataParallel(encoder) # not using because it was doing weird things with captions not lining up with images
         #decoder = torch.nn.DataParallel(decoder)
     else:
         device = 'cpu'
@@ -106,13 +121,13 @@ def main(args):
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
     print("Datasets loaded")
     
-    epochs_since_improvement = 0
-    
+    cur_bleu4 = 0
     print("Validating Model")
-    cur_bleu4 = validate(encoder, decoder, val_loader, decoder_optimizer, encoder_optimizer, device,  criterion, tokenizer)
+    if args.do_eval:
+        cur_bleu4 = validate(encoder, decoder, val_loader, decoder_optimizer, encoder_optimizer, device,  criterion, tokenizer)
     if cur_bleu4 > best_bleu4:
         best_bleu4 = cur_bleu4
-    save_checkpoint(args.model_path, 0, encoder, decoder, encoder_optimizer, decoder_optimizer, cur_bleu4, True)
+    #save_checkpoint(args.model_path, 0, encoder, decoder, encoder_optimizer, decoder_optimizer, cur_bleu4, True)
     print("BLEU Score: {}".format(best_bleu4))
     # Train and validate
     print("Traing model")
@@ -179,7 +194,7 @@ def train(args, encoder, decoder, loader, decoder_optimizer, encoder_optimizer, 
                 
 def validate(encoder, decoder, loader, decoder_optimizer, encoder_optimizer, device, criterion, tokenizer):
     decoder.eval()
-    encoder.eval() 
+    encoder.eval()
     losses = AverageMeter()
     top5accs = AverageMeter()
     references, candidates = list(), list()
@@ -246,8 +261,10 @@ def validate(encoder, decoder, loader, decoder_optimizer, encoder_optimizer, dev
  
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train molecule captioning model')   
+    parser.add_argument('--use_selfies', action='store_true', help='is the training files selfies')
+    parser.add_argument('--selfies_vocab', default='data/selfies.vocab', type=str, help='vocab mapping for selfies')
     parser.add_argument('--max_length', type=int, default=150, help='Max length of tokenized smiles')
-    parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer name in the folder tokenizers/')
+    parser.add_argument('--tokenizer', default='data/tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer name in the folder tokenizers/')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')
     parser.add_argument('--captions_prefix', type=str, default='vocab2000', help='prefix of the tokenization type you will use to train your data. Ensure you use the data that matches your tokenizer.')
     parser.add_argument('--data_dir', default='data/', type=str, help='directory of data to be processed. Expect a labels.smi file and associated images')
@@ -276,5 +293,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', default=42, type=int, help='Set random seed')
     parser.add_argument('--cuda_device', default='cuda:0', type=str, help='cuda device to use. aka gpu')
     parser.add_argument('--checkpoint_freq', default=1000, type=int, help='how often to checkpoint model')
+    parser.add_argument('--do_eval', action='store_true', help ='validate the model')
+    parser.add_argument('--do_train', action='store_true', help='train the model')
     args = parser.parse_args()
     main(args)

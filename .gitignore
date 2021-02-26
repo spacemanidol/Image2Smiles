@@ -1,3 +1,7 @@
+#
+*.smi
+*.selfies
+
 # big files
 data/*.hdf5
 data/*.json
