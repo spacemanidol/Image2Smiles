@@ -20,7 +20,7 @@ Data is the collection of a bunch of different SMILES molecules. These smiles st
 [Evaluation Set]()
 
 ### Tokenizers
-```python
+```bash
 python src/train_tokenizer.py  --training_files data/ --do_train --do_test --tokenizer_name tokenizer_vocab_20000.json --vocab_size 20000 --min_frequency 2
 python src/train_tokenizer.py  --training_files data/ --do_train --do_test --tokenizer_name tokenizer_vocab_2000.json --vocab_size 2000 --min_frequency 2
 python src/train_tokenizer.py  --training_files data/ --do_train --do_test --tokenizer_name tokenizer_vocab_500.json --vocab_size 500 --min_frequency 2
@@ -29,10 +29,45 @@ python src/train_tokenizer.py  --training_files data/ --do_train --do_test --tok
 ```
 
 
+# Baseline
+https://cactus.nci.nih.gov/osra/
+
+The most popular similarity measure for comparing chemical structures represented by means of fingerprints is the Tanimoto (or Jaccard) coefficient T. Two structures are usually considered similar if T > 0.85 (for Daylight fingerprints). However, it is a common misunderstanding that a similarity of T > 0.85 reflects similar bioactivities
+
+https://jcheminf.biomedcentral.com/articles/10.1186/s13321-015-0069-3
+https://docs.eyesopen.com/toolkits/python/graphsimtk/measure.html
+
+
 ### Train 
-```python
-python train.py --max_length 150 --tokenizer tokenizers/tokenizer_vocab_200.json --data_dir data/ --epochs 10 --num_workers 8 --batch_size 32 --dropout 0.5 --embedding_dim 512 --encoder_type RESNET101 --decoder_type LSTM+Attention --decoder_dim 512 --encoder_dim 2048 --attention_dim 512 --cuda --model_path models/basevocab200/ --encoder_lr 1e-4 --decoder_lr 4e-4 --gradient_clip 5.0 --alphac 1 --print_freq 100
+```bash
+python train.py --max_length 150  --tokenizer tokenizers/tokenizer_vocab_100.json  --captions_prefix vocab100 --data_dir data/ --epochs 1 --num_workers 8 --batch_size 64 --dropout 0.5  --embedding_dim 512  --decoder_dim 512 --encoder_dim 2048 --encoder_lr 1e-4 --decoder_lr 4e-4 --encoder_type RESNET101 --decoder_type LSTM+Attention --model_path models/vocab100 --cuda --cuda_device cuda:0
 ```
 
-### Baseline
-https://cactus.nci.nih.gov/osra/
+Models
+Done
+100 
+200
+200finetune
+500
+500finetune
+2000
+
+
+In Progress
+100finetune
+20000
+
+Need
+2000finetune
+20000finetune
+SELFIES
+
+
+### Predict
+Explore beam search and branching beam search
+```bash
+python predict.py --output exp/vocab200_50_branchfacto5_brachround10_branchestoexpand25 --images_to_predict exp/to_predict.txt --directory_path data/tmp/validation_images/ --beam_size 50 --tokenizer tokenizers/tokenizer_vocab_200.json --cuda --model_path models/vocab200checkpoint_62000 --cuda_device cuda:0 --branch_rounds 10 --branch_factor 5 --branches_to_expand 25
+python predict.py --output exp/vocab20000_beam50_branchfacto5_brachround10_branchestoexpand25 --images_to_predict exp/to_predict.txt --directory_path data/tmp/validation_images/ --beam_size 50 --tokenizer tokenizers/tokenizer_vocab_20000.json --cuda --model_path models/vocab20000_checkpoint_0 --cuda_device cuda:0 --branch_rounds 10 --branch_factor 5 --branches_to_expand 25
+```
+
+### Results
