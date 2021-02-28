@@ -26,7 +26,7 @@ def save_checkpoint(model_path, epoch, encoder, decoder, encoder_optimizer, deco
              'decoder': decoder,
              'encoder_optimizer': encoder_optimizer,
              'decoder_optimizer': decoder_optimizer}
-    filename = model_path + 'checkpoint_' + str(epoch)
+    filename = model_path +  'checkpoint_' + str(epoch)
     torch.save(state, filename)
 def load_selfies_vocab(input_file):
     idx2selfies, selfies2idx = {}, {}
