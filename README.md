@@ -41,6 +41,9 @@ https://docs.eyesopen.com/toolkits/python/graphsimtk/measure.html
 ### Train 
 ```bash
 python train.py --max_length 150  --tokenizer tokenizers/tokenizer_vocab_100.json  --captions_prefix vocab100 --data_dir data/ --epochs 1 --num_workers 8 --batch_size 64 --dropout 0.5  --embedding_dim 512  --decoder_dim 512 --encoder_dim 2048 --encoder_lr 1e-4 --decoder_lr 4e-4 --encoder_type RESNET101 --decoder_type LSTM+Attention --model_path models/vocab100 --cuda --cuda_device cuda:0
+python src/train.py --tokenizer data/tokenizers/tokenizer_vocab_20000.json  --captions_prefix vocab20000 --data_dir data --epochs 1 --num_workers 16 --batch_size 48 --model_path models/vocab20000_ --cuda --cuda_device cuda:3
+python src/train.py --tokenizer data/tokenizers/tokenizer_vocab_20000.json  --captions_prefix vocab20000 --data_dir data --epochs 1 --num_workers 16 --batch_size 48 --model_path models/vocab20000_finetune_ --cuda --cuda_device cuda:3 --fine_tune
+
 ```
 
 Models
@@ -51,16 +54,18 @@ Done
 500
 500finetune
 2000
+selfies
+2000finetune
+selfies_finetune
 
 
 In Progress
 100finetune
-20000
+
 
 Need
-2000finetune
+20000
 20000finetune
-SELFIES
 
 
 ### Predict

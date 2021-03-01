@@ -36,7 +36,36 @@ def predict_captions(args, encoder, decoder, tokenizer, path, transform,device):
     img = torch.stack([img]).to(device)
     encoder_out = encoder(img).to(device)
     return decoder.predict(encoder_out, tokenizer, args.beam_size, args.branch_rounds, args.branch_factor, args.branches_to_expand, device)
+def get_closest(args, top, encoder, path, device, transform):
+    if len(top) == 1:
+        return top[0]
+    else:
+        #load the image, create the other candidates and ssee which encoder output is closest
+        reference = imread(path)
+        if len(reference.shape) == 2:
+            reference = reference[:, :, np.newaxis]
+            reference = np.concatenate([reference, reference, reference], axis=2)
+        reference = imresize(reference, (args.img_size, args.img_size))
+        reference = reference.transpose(2, 0, 1)
+        reference = torch.stack([reference]).to(device)
+        reference_out = encoder(img).to(device)
+        for candidate in top:
+            distance = 1
+            
+            #we pass candidates through encoder 
 
+        torch.cdist(a,b)**2    
+    Distance = ((A-B)**2).sum(axis=0)
+def load_selfies_vocab(input_file):
+    idx2selfies, selfies2idx = {}, {}
+    idx = 0
+    with open(input_file) as f:
+        for l in f:
+            l = l.strip()
+            idx2selfies[idx] = l
+            selfies2idx[l] = idx
+            idx += 1
+    return idx2selfies, selfies2idx
 
 def main(args):
     # Load Tokenizer
@@ -72,6 +101,8 @@ def main(args):
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5],std=[0.5, 0.5, 0.5])
     transform = transforms.Compose([normalize])
+    use_selfies = args.use_selfies
+    idx2selfies, selfies2idx = load_selfies_vocab(args.selfies_vocab)
     print("Predicting images")
     with torch.no_grad():
         with open(args.images_to_predict,'r') as f:
@@ -80,12 +111,16 @@ def main(args):
                     path = os.path.join(args.directory_path,l.strip())
                     top = predict_captions(args, encoder, decoder, tokenizer,  path, transform, device)
                     if len(top) > 0:
-                        top = top[0]
+                        top = get_closest(args, top, encoder, path, device, transform)
+                    else:
+                        top = 'NONE'
                     w.write("{}\t{}\n".format(top, l.strip()))
     print("Done Predicting")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Predict Smiles Given an input image')
+    parser.add_argument('--selfies_vocab', type=str, default = 'data/selfies.vocab', help='vocab file for selfies encoding')
+    parser.add_argument('--use_selfies', action='store_true', help='Use selfies')
     parser.add_argument('--images_to_predict', default=None, type=str, help='a file indicating what images to predict. One png name per line')
     parser.add_argument('--directory_path', type=str, help='directory of images to predict')
     parser.add_argument('--beam_size', type=int, default=20, help='Beam size for candidate generation')
