@@ -1,4 +1,5 @@
 import os
+import math
 import argparse
 import numpy as np
 import json
@@ -43,11 +44,11 @@ def get_closest(args, candidates, encoder_out, encoder, path, device, transform)
             try:
                 m = Chem.MolFromSmiles(l)
                 if m != None:
-                    Draw.MolToFile(m,'tmp.png'), size=(args.img_size,args.img_size))
+                    Draw.MolToFile(m,'tmp.png', size=(args.img_size,args.img_size))
                     cand_out = encoder_img(args, encoder, 'tmp.png', device)
                     similarities.append(math.log(torch.sum(torch.abs(encoder_out, cand_out))))
-        max_sim = np.max(similarities)  
-        idx = similarities.index(max_sim)
+                    print("MEOW")
+        idx = similarities.index(np.max(similarities))
     return candidates[idx]
 
 def load_selfies_vocab(input_file):
