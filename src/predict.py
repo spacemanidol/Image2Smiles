@@ -5,7 +5,6 @@ import json
 from tqdm import tqdm
 from scipy.misc import imread, imresize
 from nltk.translate.bleu_score import corpus_bleu
-
 import torch
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
@@ -14,7 +13,6 @@ import torch.utils.data
 import torchvision.transforms as transforms
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
-
 from rdkit import Chem
 
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, processors
@@ -22,7 +20,7 @@ from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, pr
 from encoders import Resnet101Encoder
 from decoders import DecoderWithAttention
 
-def encoder_img(args, encoder, path, device)
+def encoder_img(args, encoder, transform, path, device):
     img = imread(path)
     if len(img.shape) == 2:
         img = img[:, :, np.newaxis]
@@ -47,7 +45,7 @@ def get_closest(args, candidates, encoder_out, encoder, path, device, transform)
                 if m != None:
                     Draw.MolToFile(m,'tmp.png'), size=(args.img_size,args.img_size))
                     cand_out = encoder_img(args, encoder, 'tmp.png', device)
-                    similarities.append(torch.cdist(encoder_out, cand_out))
+                    similarities.append(math.log(torch.sum(torch.abs(encoder_out, cand_out))))
         max_sim = np.max(similarities)  
         idx = similarities.index(max_sim)
     return candidates[idx]
@@ -105,7 +103,7 @@ def main(args):
             with open(args.output,'w') as w:
                 for i, l in enumerate(tqdm(f)):
                     path = os.path.join(args.directory_path,l.strip())
-                    encoder_out = encoder_img(args, encoder, path, device)
+                    encoder_out = encoder_img(args, encoder, transform, path, device)
                     candidates = decoder.predict(encoder_out, tokenizer, args.beam_size, args.branch_rounds, args.branch_factor, args.branches_to_expand, device, args.use_selfies, idx2selfies)
                     candidate = 'NONE'
                     if len(candidates) > 0:
