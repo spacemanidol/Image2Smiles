@@ -42,7 +42,7 @@ def levenshtein_eval(references):
     Similarity via Levenshtein Distance
     """
     print("Calculating Levenshtein Distance")
-    distances = []
+    scores = []
     for reference in references:
         cur_scores = []
         for candidate in references:
@@ -180,12 +180,12 @@ def main(args):
     print("Mean Morgan Fingergprint:{}".format(morgan_fingerprint_evaluation(mol_references)))
     print("Mean RDkit Fingergprint:{}".format(rd_fingerprint_evaluation(mol_references)))
     print("Mean MAACS Fingergprint:{}".format(maacs_fingerprint_evaluation(mol_references)))
-    print("MEAN image distance:{}".format(img_distance_eval(args, references))), transform)))
+    print("MEAN image distance:{}".format(img_distance_eval(args, references, transform)))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Base Metrics for random distribution')
     parser.add_argument('--input_file', type=str, default='data/training.smi', help='source of input smiles files')
-    parser.add_argument('--sample_size', type=str, default=10, help='amount of molecules to compare')
-    parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer to use in BLEU evaluation')
+    parser.add_argument('--sample_size', type=int, default=10, help='amount of molecules to compare')
+    parser.add_argument('--tokenizer', default='data/tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer to use in BLEU evaluation')
     args = parser.parse_args()
     main(args)

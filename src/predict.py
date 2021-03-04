@@ -15,6 +15,7 @@ import torchvision.transforms as transforms
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from rdkit import Chem
+from rdkit.Chem import Draw
 
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, processors
 
@@ -39,17 +40,18 @@ def get_closest(args, candidates, encoder_out, encoder, path, device, transform)
     idx = 0
     if len(candidates) > 1:
         similarities = []
-        for smi in top:
+        for smi in candidates:
             cur_sim = 0
             try:
-                m = Chem.MolFromSmiles(l)
+                m = Chem.MolFromSmiles(smi)
                 if m != None:
                     Draw.MolToFile(m,'tmp.png', size=(args.img_size,args.img_size))
-                    cand_out = encoder_img(args, encoder, 'tmp.png', device)
-                    similarities.append(math.log(torch.sum(torch.abs(encoder_out, cand_out))))
+                    cand_out = encoder_img(args, encoder, transform,  'tmp.png', device)
+                    cur_sim = math.log(torch.sum(torch.abs(encoder_out- cand_out)))
             except:
                 pass
-        idx = similarities.index(np.max(similarities))
+            similarities.append(cur_sim)
+        idx = similarities.index(np.min(similarities))
     return candidates[idx]
 
 def load_selfies_vocab(input_file):
@@ -106,7 +108,7 @@ def main(args):
                 for i, l in enumerate(tqdm(f)):
                     path = os.path.join(args.directory_path,l.strip())
                     encoder_out = encoder_img(args, encoder, transform, path, device)
-                    candidates = decoder.predict(encoder_out, tokenizer, args.beam_size, args.branch_rounds, args.branch_factor, args.branches_to_expand, device, args.use_selfies, idx2selfies)
+                    candidates = decoder.predict(encoder_out, tokenizer, args.beam_size, args.branch_rounds, args.branch_factor, args.branches_to_expand, device, args.use_selfies, idx2selfies, selfies2idx)
                     candidate = 'NONE'
                     if len(candidates) > 0:
                         candidate = get_closest(args, candidates, encoder_out, encoder, path, device, transform)

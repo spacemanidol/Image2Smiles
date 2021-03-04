@@ -158,7 +158,7 @@ class DecoderWithAttention(nn.Module):
 
         return predictions, encoded_captions, decode_lengths, alphas, sort_ind
 
-    def predict(self, encoder_out, tokenizer, beam_size, branch_rounds, branch_factor, branches_to_expand, device, use_selfies, idx2selfies):
+    def predict(self, encoder_out, tokenizer, beam_size, branch_rounds, branch_factor, branches_to_expand, device, use_selfies, idx2selfies, selfies2idx):
         """
         Caption prediction
         :param encoder_out: encoded images, a tensor of dimension (batch_size, enc_image_size, enc_image_size, encoder_dim)
@@ -174,6 +174,11 @@ class DecoderWithAttention(nn.Module):
         end_token_id = tokenizer.encode('<end>').ids[0]
         pad_token_id = tokenizer.get_vocab_size()
         vocab_size = tokenizer.get_vocab_size()+ 1
+        if use_selfies:
+            start_token_id = selfies2idx['[start]']
+            end_token_id = selfies2idx['[end]']
+            pad_token_id = selfies2idx['[pad]']
+            vocab_size = len(selfies2idx)
         k =  beam_size
         enc_image_size = encoder_out.size(1)
         encoder_dim = encoder_out.size(3)# Flatten encoding
@@ -201,7 +206,10 @@ class DecoderWithAttention(nn.Module):
                 #print("{}\t{}\t{}\t{}".format(k,step, branches_to_expand, top_k_scores))
                 top_k_scores, top_k_words = scores.view(-1).topk(k, 0, True, True)  # Unroll and find top scores, and their unrolled indices
                 if branch_rounds > 0:
-                    _, expand_index = torch.topk(top_k_scores, branches_to_expand, dim=0) 
+                    tmp = branches_to_expand
+                    if branches_to_expand > len(top_k_scores):
+                        tmp = len(top_k_scores) 
+                    _, expand_index = torch.topk(top_k_scores, tmp, dim=0) 
             next_word_inds = top_k_words % vocab_size  #  Convert unrolled indices to actual indices of scores
             if step > 2 and branch_rounds > 0:
                 branch_rounds -= 1 
@@ -255,9 +263,10 @@ class DecoderWithAttention(nn.Module):
                     pass
         else:
             for i in mol_index:
+                tmp = complete_seqs[i][1:-1]
+                cur_smiles = ''.join([idx2selfies[j] for j in tmp])
+                can_smi = sf.decoder(cur_smiles)
                 try:
-                    tmp = complete_seqs[i][1:-1]
-                    cur_smiles = [index2smiles[j] for j in tmp]
                     can_smi = sf.decoder(cur_smiles)
                     if len(can_smi) > 1:
                         real_molecules.append(can_smi)
