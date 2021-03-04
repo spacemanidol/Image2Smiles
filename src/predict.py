@@ -47,7 +47,8 @@ def get_closest(args, candidates, encoder_out, encoder, path, device, transform)
                     Draw.MolToFile(m,'tmp.png', size=(args.img_size,args.img_size))
                     cand_out = encoder_img(args, encoder, 'tmp.png', device)
                     similarities.append(math.log(torch.sum(torch.abs(encoder_out, cand_out))))
-                    print("MEOW")
+            except:
+                pass
         idx = similarities.index(np.max(similarities))
     return candidates[idx]
 
@@ -125,7 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('--img_size', type=int, default=256, help='Image')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with')
     parser.add_argument('--output', type=str, default='output.txt', help='file name to produce model predictions for each image.')
-    parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer name in the folder tokenizers/')
+    parser.add_argument('--tokenizer', default='data/tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer name in the folder tokenizers/')
     parser.add_argument('--encoder_type', default='RESNET101', type=str, help='Type of encoder architecture', choices=['RESNET101'])
     parser.add_argument('--decoder_type', default='LSTM+Attention', type=str, help='Type of decoder architecture', choices=['LSTM+Attention'])
     parser.add_argument('--cuda', action='store_true', help='use CUDA')
