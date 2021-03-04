@@ -48,7 +48,8 @@ python src/train.py --tokenizer data/tokenizers/tokenizer_vocab_20000.json  --ca
 
 Models
 Done
-100 
+100
+100finetune 
 200
 200finetune
 500
@@ -60,11 +61,9 @@ selfies_finetune
 
 
 In Progress
-100finetune
-
+20000
 
 Need
-20000
 20000finetune
 
 

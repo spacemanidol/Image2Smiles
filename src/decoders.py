@@ -6,6 +6,7 @@ import torchvision
 from rdkit import Chem
 import numpy as np
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, processors
+import selfies as sf
 
 class Attention(nn.Module):
     """
@@ -157,7 +158,7 @@ class DecoderWithAttention(nn.Module):
 
         return predictions, encoded_captions, decode_lengths, alphas, sort_ind
 
-    def predict(self, encoder_out, tokenizer, beam_size, branch_rounds, branch_factor, branches_to_expand, device):
+    def predict(self, encoder_out, tokenizer, beam_size, branch_rounds, branch_factor, branches_to_expand, device, use_selfies, idx2selfies):
         """
         Caption prediction
         :param encoder_out: encoded images, a tensor of dimension (batch_size, enc_image_size, enc_image_size, encoder_dim)
@@ -242,14 +243,24 @@ class DecoderWithAttention(nn.Module):
             step += 1
         mol_index = np.argsort(complete_seqs_scores)
         real_molecules = []
-        for i in mol_index:
-            try:
-                smi = tokenizer.decode(complete_seqs[i][1:-1]) #remove start and end token
-                mol = Chem.MolFromSmiles(smi)
-                can_smi = Chem.MolToSmiles(mol, True) 
-                if len(can_smi) > 1:
-                    real_molecules.append(can_smi)
-            except:
-                pass
-        print(real_molecules)
+        if use_selfies == False:
+            for i in mol_index:
+                try:
+                    smi = tokenizer.decode(complete_seqs[i][1:-1]) #remove start and end token
+                    mol = Chem.MolFromSmiles(smi)
+                    can_smi = Chem.MolToSmiles(mol, True) 
+                    if len(can_smi) > 1:
+                        real_molecules.append(can_smi)
+                except:
+                    pass
+        else:
+            for i in mol_index:
+                try:
+                    tmp = complete_seqs[i][1:-1]
+                    cur_smiles = [index2smiles[j] for j in tmp]
+                    can_smi = sf.decoder(cur_smiles)
+                    if len(can_smi) > 1:
+                        real_molecules.append(can_smi)
+                except:
+                    pass
         return real_molecules

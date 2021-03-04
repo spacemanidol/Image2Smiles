@@ -1,13 +1,17 @@
 import os
+import math
 import argparse
 import Levenshtein
 import numpy as np
 from tqdm import tqdm
+from scipy.misc import imread, imresize
 from rdkit import Chem, DataStructs
-from rdkit.Chem import MACCSkeys, AllChem, rdmolops
-from rdkit.Chem import AllChem
+from rdkit.Chem import MACCSkeys, AllChem, rdmolops, Draw
 from nltk.translate.bleu_score import sentence_bleu
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, processors
+import torch
+import torchvision.transforms as transforms
+
 """
 Evaluation Metrics
 1. Molecule Found(Binary)
@@ -17,6 +21,7 @@ Evaluation Metrics
 5. Molecule Distance via MACCS
 6. Molecule Distance via Path
 7. Molecule distance via morgan fingerprint
+8. Image similarity
 """
 
 def load_img2smi(filename):
@@ -29,7 +34,6 @@ def load_img2smi(filename):
             if '.' in l[0]: #No smiles generated so just an extension
                 img2smi[l[0]] = 'NONE'
                 count += 1
-                print("HERE")
             else:
                 img2smi[l[1]] = l[0]
             if l[0] == 'NONE':
@@ -88,12 +92,12 @@ def bleu_eval(args, references, candidates):
     print("Tokenizer Loaded.\n Calculating BLEU-1")
     scores = []
     for img in references:
-        #score = 0
+        score = 0
         if img in candidates:
             reference = tokenizer.encode(references[img])
             candidate = tokenizer.encode(candidates[img])
             score = sentence_bleu(reference.tokens, candidate.tokens,weights=(1.0, 0, 0, 0))
-            scores.append(score)
+        scores.append(score)
     print("Done calculating BLEU-1. {} average score".format(round(np.mean(scores),4)))
     return round(np.mean(scores),4)
     
@@ -114,11 +118,11 @@ def morgan_fingerprint_evaluation(references, candidates):
             similarity[2] = round(DataStructs.CosineSimilarity(morgan_fp_reference,morgan_fp_candidate), 4)
             similarity[3] = round(DataStructs.SokalSimilarity(morgan_fp_reference,morgan_fp_candidate), 4)
             similarity[4] = round(DataStructs.McConnaugheySimilarity(morgan_fp_reference,morgan_fp_candidate), 4)
-            similarities[0].append(similarity[0])
-            similarities[1].append(similarity[1])
-            similarities[2].append(similarity[2])
-            similarities[3].append(similarity[3])
-            similarities[4].append(similarity[4])
+        similarities[0].append(similarity[0])
+        similarities[1].append(similarity[1])
+        similarities[2].append(similarity[2])
+        similarities[3].append(similarity[3])
+        similarities[4].append(similarity[4])
     print("Done Calculating Similarity via  Morgan based Circular Fingerprint")
     print("##########################################")
     print("Tanimoto Similarity:{}".format(round(np.mean(similarities[0]),4)))
@@ -145,11 +149,11 @@ def rd_fingerprint_evaluation(references, candidates):
             similarity[2] = round(DataStructs.CosineSimilarity(reference_rdkfingerprint,candidate_rdkfingerprint), 4)
             similarity[3] = round(DataStructs.SokalSimilarity(reference_rdkfingerprint,candidate_rdkfingerprint), 4)
             similarity[4] = round(DataStructs.McConnaugheySimilarity(reference_rdkfingerprint,candidate_rdkfingerprint), 4)
-            similarities[0].append(similarity[0])
-            similarities[1].append(similarity[1])
-            similarities[2].append(similarity[2])
-            similarities[3].append(similarity[3])
-            similarities[4].append(similarity[4])
+        similarities[0].append(similarity[0])
+        similarities[1].append(similarity[1])
+        similarities[2].append(similarity[2])
+        similarities[3].append(similarity[3])
+        similarities[4].append(similarity[4])
     print("Done Calculating Similarity via RDFIngerprint Path Similarity")
     print("##########################################")
     print("Tanimoto Similarity:{}".format(round(np.mean(similarities[0]),4)))
@@ -176,11 +180,11 @@ def maacs_fingerprint_evaluation(references, candidates):
             similarity[2] = round(DataStructs.CosineSimilarity(reference_maccs,candidate_maccs), 4)
             similarity[3] = round(DataStructs.SokalSimilarity(reference_maccs,candidate_maccs), 4)
             similarity[4] = round(DataStructs.McConnaugheySimilarity(reference_maccs,candidate_maccs), 4)
-            similarities[0].append(similarity[0])
-            similarities[1].append(similarity[1])
-            similarities[2].append(similarity[2])
-            similarities[3].append(similarity[3])
-            similarities[4].append(similarity[4])
+        similarities[0].append(similarity[0])
+        similarities[1].append(similarity[1])
+        similarities[2].append(similarity[2])
+        similarities[3].append(similarity[3])
+        similarities[4].append(similarity[4])
     print("Done Calculating Similarity via MACCS Keys")
     print("##########################################")
     print("Tanimoto Similarity:{}".format(round(np.mean(similarities[0]),4)))
@@ -191,7 +195,44 @@ def maacs_fingerprint_evaluation(references, candidates):
     print("##########################################")
     return round(np.mean(similarities[0]),4)
 
+def load_img(args, path, transform):
+    """
+    Load Image and transform
+    """
+    img = imread(path)
+    if len(img.shape) == 2:
+        img = img[:, :, np.newaxis]
+        img = np.concatenate([img, img, img], axis=2)
+    img = imresize(img, (args.img_size, args.img_size))
+    img = img.transpose(2, 0, 1)
+    assert img.shape == (3, args.img_size, args.img_size)
+    assert np.max(img) <= 255
+    img  = torch.FloatTensor(img/255.)
+    img = transform(img)
+    img = torch.stack([img])
+    return img
+
+def img_distance_eval(args, references, candidates, transform):
+    """
+    Edit distance between two images of generated molecules:
+    """
+    scores = []
+    for img in references:
+        score = 0
+        if img in candidates:
+            m = Chem.MolFromSmiles(references[img])
+            Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
+            reference_img = load_img(args, encoder, "tmp.png", transform)
+            m = Chem.MolFromSmiles(candidates[img])
+            Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
+            candidate_img = load_img(args, encoder, "tmp.png", transform)
+            score = math.log(torch.sum(torch.abs(reference_img- candidate_img)))
+        scores.append(score)
+    return scores
+    
 def main(args):
+    normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5],std=[0.5, 0.5, 0.5])
+    transform = transforms.Compose([normalize])
     reference_img2smi, _ = load_img2smi(args.reference_file)
     candidate_img2smi, count = load_img2smi(args.candidate_file)
     percent_candidate_molecules_captioned =  1 - (count/len(reference_img2smi))
@@ -203,6 +244,7 @@ def main(args):
     maccs_score = maacs_fingerprint_evaluation(reference_mols, candidate_mols)
     rd_score = rd_fingerprint_evaluation(reference_mols, candidate_mols)
     morgan_score = morgan_fingerprint_evaluation(reference_mols, candidate_mols)
+    image_distance = img_distance_eval(args, references_img2smi, candidate_img2smi, transform)
     with open(args.output_file, 'w') as w:
         w.write("Reference File:{}\n".format(args.reference_file))
         w.write("Candidate File:{}\n".format(args.candidate_file))
@@ -213,6 +255,7 @@ def main(args):
         w.write("MACCS Fingerprinting Tanimoto Similarity:{}\n".format(maccs_score))
         w.write("RD Path Fingerprinting Tanimoto Similarity:{}\n".format(rd_score))
         w.write("Morgan Fingerprint Tanimoto Similarity:{}\n".format(morgan_score))
+        w.write("Image Distance:{}\n".format(image_distance))
     return 0
 
 if __name__ == '__main__':

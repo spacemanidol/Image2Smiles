@@ -22,7 +22,7 @@ from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, pr
 from encoders import Resnet101Encoder
 from decoders import DecoderWithAttention
 
-def predict_captions(args, encoder, decoder, tokenizer, path, transform,device):
+def encoder_img(args, encoder, path, device)
     img = imread(path)
     if len(img.shape) == 2:
         img = img[:, :, np.newaxis]
@@ -34,28 +34,24 @@ def predict_captions(args, encoder, decoder, tokenizer, path, transform,device):
     img  = torch.FloatTensor(img/255.)
     img = transform(img)
     img = torch.stack([img]).to(device)
-    encoder_out = encoder(img).to(device)
-    return decoder.predict(encoder_out, tokenizer, args.beam_size, args.branch_rounds, args.branch_factor, args.branches_to_expand, device)
-def get_closest(args, top, encoder, path, device, transform):
-    if len(top) == 1:
-        return top[0]
-    else:
-        #load the image, create the other candidates and ssee which encoder output is closest
-        reference = imread(path)
-        if len(reference.shape) == 2:
-            reference = reference[:, :, np.newaxis]
-            reference = np.concatenate([reference, reference, reference], axis=2)
-        reference = imresize(reference, (args.img_size, args.img_size))
-        reference = reference.transpose(2, 0, 1)
-        reference = torch.stack([reference]).to(device)
-        reference_out = encoder(img).to(device)
-        for candidate in top:
-            distance = 1
-            
-            #we pass candidates through encoder 
+    return encoder(img).to(device)
 
-        torch.cdist(a,b)**2    
-    Distance = ((A-B)**2).sum(axis=0)
+def get_closest(args, candidates, encoder_out, encoder, path, device, transform):
+    idx = 0
+    if len(candidates) > 1:
+        similarities = []
+        for smi in top:
+            cur_sim = 0
+            try:
+                m = Chem.MolFromSmiles(l)
+                if m != None:
+                    Draw.MolToFile(m,'tmp.png'), size=(args.img_size,args.img_size))
+                    cand_out = encoder_img(args, encoder, 'tmp.png', device)
+                    similarities.append(torch.cdist(encoder_out, cand_out))
+        max_sim = np.max(similarities)  
+        idx = similarities.index(max_sim)
+    return candidates[idx]
+
 def load_selfies_vocab(input_file):
     idx2selfies, selfies2idx = {}, {}
     idx = 0
@@ -109,12 +105,12 @@ def main(args):
             with open(args.output,'w') as w:
                 for i, l in enumerate(tqdm(f)):
                     path = os.path.join(args.directory_path,l.strip())
-                    top = predict_captions(args, encoder, decoder, tokenizer,  path, transform, device)
-                    if len(top) > 0:
-                        top = get_closest(args, top, encoder, path, device, transform)
-                    else:
-                        top = 'NONE'
-                    w.write("{}\t{}\n".format(top, l.strip()))
+                    encoder_out = encoder_img(args, encoder, path, device)
+                    candidates = decoder.predict(encoder_out, tokenizer, args.beam_size, args.branch_rounds, args.branch_factor, args.branches_to_expand, device, args.use_selfies, idx2selfies)
+                    candidate = 'NONE'
+                    if len(candidates) > 0:
+                        candidate = get_closest(args, candidates, encoder_out, encoder, path, device, transform)
+                    w.write("{}\t{}\n".format(candidate, l.strip()))
     print("Done Predicting")
 
 if __name__ == '__main__':
