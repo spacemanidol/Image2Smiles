@@ -60,7 +60,7 @@ def bleu_eval(args, references):
     scores = []
     for smi in references:
         cur_scores = []
-        for smi2 in candidates:
+        for smi2 in references:
             if smi2 != smi:
                 reference = tokenizer.encode(smi)
                 candidate = tokenizer.encode(smi2)
@@ -80,7 +80,7 @@ def morgan_fingerprint_evaluation(references):
             if reference != candidate:
                 candidate_morgan = AllChem.GetMorganFingerprintAsBitVect(candidate, 2, nBits=1024)
                 reference_morgan = AllChem.GetMorganFingerprintAsBitVect(reference, 2, nBits=1024)
-                cur_scores.append(round(DataStructs.TanimotoSimilarity(reference_rdkfingerprint,candidate_rdkfingerprint), 4))
+                cur_scores.append(round(DataStructs.TanimotoSimilarity(reference_morgan,candidate_morgan), 4))
         scores.append(np.mean(cur_scores))
     return round(np.mean(scores),4)
 
