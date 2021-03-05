@@ -1,9 +1,0 @@
-Reference File:exp/references_validation.txt
-Candidate File:exp/osra_validation.txt
-Percent Captions Generated:0.865
-Percent Valid SMI Generated:0.652
-Levenshtein Distance:30.841
-BLEU-1 using tokenizers/tokenizer_vocab_2000.json tokenizer:0.0533
-MACCS Fingerprinting Tanimoto Similarity:0.5903
-RD Path Fingerprinting Tanimoto Similarity:0.4349
-Morgan Fingerprint Tanimoto Similarity:0.4387
