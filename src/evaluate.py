@@ -218,17 +218,20 @@ def img_distance_eval(args, references, candidates, transform):
     """
     scores = []
     for img in references:
-        score = 0
+        score = 1000
         if img in candidates:
-            m = Chem.MolFromSmiles(references[img])
-            Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
-            reference_img = load_img(args, "tmp.png", transform)
-            m = Chem.MolFromSmiles(candidates[img])
-            Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
-            candidate_img = load_img(args, "tmp.png", transform)
-            score = math.log(torch.sum(torch.abs(reference_img- candidate_img)))
-        scores.append(score)
-    return scores
+            try:
+                m = Chem.MolFromSmiles(references[img])
+                Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
+                reference_img = load_img(args, "tmp.png", transform)
+                m = Chem.MolFromSmiles(candidates[img])
+                Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
+                candidate_img = load_img(args, "tmp.png", transform)
+                score = math.log(torch.sum(torch.abs(reference_img- candidate_img)))
+                scores.append(score)
+            except:
+                pass
+    return round(np.mean(scores),4)
     
 def main(args):
     normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5],std=[0.5, 0.5, 0.5])
