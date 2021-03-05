@@ -222,10 +222,10 @@ def img_distance_eval(args, references, candidates, transform):
         if img in candidates:
             m = Chem.MolFromSmiles(references[img])
             Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
-            reference_img = load_img(args, encoder, "tmp.png", transform)
+            reference_img = load_img(args, "tmp.png", transform)
             m = Chem.MolFromSmiles(candidates[img])
             Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
-            candidate_img = load_img(args, encoder, "tmp.png", transform)
+            candidate_img = load_img(args, "tmp.png", transform)
             score = math.log(torch.sum(torch.abs(reference_img- candidate_img)))
         scores.append(score)
     return scores
@@ -244,7 +244,7 @@ def main(args):
     maccs_score = maacs_fingerprint_evaluation(reference_mols, candidate_mols)
     rd_score = rd_fingerprint_evaluation(reference_mols, candidate_mols)
     morgan_score = morgan_fingerprint_evaluation(reference_mols, candidate_mols)
-    image_distance = img_distance_eval(args, references_img2smi, candidate_img2smi, transform)
+    image_distance = img_distance_eval(args, reference_img2smi, candidate_img2smi, transform)
     with open(args.output_file, 'w') as w:
         w.write("Reference File:{}\n".format(args.reference_file))
         w.write("Candidate File:{}\n".format(args.candidate_file))
@@ -265,5 +265,6 @@ if __name__ == '__main__':
     parser.add_argument('--output_file', type=str, default ='exp/osra_validation_results.txt', help='Filename where eval results will be written')
     parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer to use in BLEU evaluation')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with') 
+    parser.add_argument('--img_size', default=256, type=int, help='Image size')
     args = parser.parse_args()
     main(args)

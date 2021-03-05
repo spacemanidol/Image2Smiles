@@ -57,12 +57,6 @@ def bleu_eval(args, references):
     """
     print("Loading Tokenizer: {}.".format(args.tokenizer))
     tokenizer = Tokenizer.from_file(args.tokenizer)
-    print("Testing with SMILES String: {}".format(args.test_string))
-    encoding = tokenizer.encode(args.test_string)
-    print("Encoded string: {}".format(encoding.tokens))
-    decoded = tokenizer.decode(encoding.ids)
-    print("Decoded string: {}".format(decoded))
-    print("Tokenizer Loaded.\n Calculating BLEU-1")
     scores = []
     for smi in references:
         cur_scores = []
@@ -162,7 +156,7 @@ def load_smi(filename):
     with open(filename, "r") as f:
         for l in f:
             try:
-                mol = Chem.MolFromSmiles(l.strip())
+#                mol = Chem.MolFromSmiles(l.strip())
                 smi.append(l.strip())
             except:
                 pass
@@ -172,9 +166,12 @@ def main(args):
     normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5],std=[0.5, 0.5, 0.5])
     transform = transforms.Compose([normalize])
     smi = load_smi(args.input_file)
+    print("loaded smiles")
     random.shuffle(smi)
     references = smi[:args.sample_size]
+    print("{} molecule sampled at random".format(args.sample_size))
     mol_references = convert_smi_to_mol(smi)
+    print("SMI converted to mol")
     print("Mean Levenshtein:{}".format(levenshtein_eval(references)))
     print("Mean BLEU-1:{}".format(bleu_eval(args, references)))
     print("Mean Morgan Fingergprint:{}".format(morgan_fingerprint_evaluation(mol_references)))
@@ -184,8 +181,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Base Metrics for random distribution')
-    parser.add_argument('--input_file', type=str, default='data/training.smi', help='source of input smiles files')
-    parser.add_argument('--sample_size', type=int, default=10, help='amount of molecules to compare')
+    parser.add_argument('--input_file', type=str, default='data/validation.smi', help='source of input smiles files')
+    parser.add_argument('--sample_size', type=int, default=5, help='amount of molecules to compare')
     parser.add_argument('--tokenizer', default='data/tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer to use in BLEU evaluation')
     args = parser.parse_args()
     main(args)

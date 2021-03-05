@@ -3,7 +3,7 @@ tmp.png
 #
 *.smi
 *.selfies
-
+*/__pycache__
 # big files
 data/*.hdf5
 data/*.json
