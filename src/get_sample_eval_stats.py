@@ -94,7 +94,7 @@ def rd_fingerprint_evaluation(references):
         for candidate in references:
             if reference != candidate:
                 candidate_rdkfingerprint = rdmolops.RDKFingerprint(candidate, fpSize=2048, minPath=1, maxPath=7)
-                reference_rdkfingerprint = rdmolops.RDKFingerprint(references, fpSize=2048, minPath=1, maxPath=7)
+                reference_rdkfingerprint = rdmolops.RDKFingerprint(reference, fpSize=2048, minPath=1, maxPath=7)
                 cur_scores.append(round(DataStructs.TanimotoSimilarity(reference_rdkfingerprint,candidate_rdkfingerprint), 4))
         scores.append(np.mean(cur_scores))
     return round(np.mean(scores),4)
@@ -107,7 +107,7 @@ def maacs_fingerprint_evaluation(references):
     for reference in references:
         cur_scores = []
         for candidate in references:
-            if reference_smi != candidate_smi:
+            if reference != candidate:
                 candidate_maccs = MACCSkeys.GenMACCSKeys(candidate)
                 reference_maccs = MACCSkeys.GenMACCSKeys(reference)
                 cur_scores.append(round(DataStructs.TanimotoSimilarity(reference_maccs,candidate_maccs), 4))
@@ -140,13 +140,18 @@ def img_distance_eval(args, smis, transform):
         cur_scores = []
         for candidate_smi in smis:
             if reference_smi != candidate_smi:
-                m = Chem.MolFromSmiles(reference_smi)
-                Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
-                reference_img = load_img(args, encoder, "tmp.png", transform)
-                m = Chem.MolFromSmiles(candidate_smi)
-                Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
-                candidate_img = load_img(args, encoder, "tmp.png", transform)
-                cur_scores.append(math.log(torch.sum(torch.abs(reference_img- candidate_img))))
+                try:
+                    m = Chem.MolFromSmiles(reference_smi)
+                    Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
+                    reference_img = load_img(args, "tmp.png", transform)
+                    m = Chem.MolFromSmiles(candidate_smi)
+                    Draw.MolToFile(m,"tmp.png", size=(args.img_size,args.img_size))
+                    candidate_img = load_img(args, "tmp.png", transform)
+                    cur_scores.append(math.log(torch.sum(torch.abs(reference_img- candidate_img))))
+                except:
+                    pass
+        if len(cur_scores) == 0:
+            cur_scores.append(0)
         scores.append(np.mean(cur_scores))
     return round(np.mean(scores),4)
 
@@ -170,7 +175,8 @@ def main(args):
     random.shuffle(smi)
     references = smi[:args.sample_size]
     print("{} molecule sampled at random".format(args.sample_size))
-    mol_references = convert_smi_to_mol(smi)
+    mol_references = convert_smi_to_mol(references)
+    print(len(mol_references))
     print("SMI converted to mol")
     print("Mean Levenshtein:{}".format(levenshtein_eval(references)))
     print("Mean BLEU-1:{}".format(bleu_eval(args, references)))
@@ -182,7 +188,8 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Base Metrics for random distribution')
     parser.add_argument('--input_file', type=str, default='data/validation.smi', help='source of input smiles files')
-    parser.add_argument('--sample_size', type=int, default=5, help='amount of molecules to compare')
+    parser.add_argument('--sample_size', type=int, default=1000, help='amount of molecules to compare')
     parser.add_argument('--tokenizer', default='data/tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer to use in BLEU evaluation')
+    parser.add_argument('--img_size', default=256, type=int, help='Image size for imige overlap')
     args = parser.parse_args()
     main(args)

@@ -61,9 +61,9 @@ def main(args):
     best_bleu4 = 0
     if args.load:
         try:
-            print("Loading models: {}".format(args.model_path + '_BEST'))
-            checkpoint = torch.load(args.model_path+'_BEST')
-            start_epoch = checkpoint['epoch'] + 1
+            print("Loading models: {}".format(args.model_path))
+            checkpoint = torch.load(args.model_path)
+            start_epoch =  1
             best_bleu = checkpoint['bleu-4']
             decoder = checkpoint['decoder']
             decoder_optimizer = checkpoint['decoder_optimizer']
