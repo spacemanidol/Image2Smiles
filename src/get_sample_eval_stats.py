@@ -174,6 +174,7 @@ def main(args):
     print("loaded smiles")
     random.shuffle(smi)
     references = smi[:args.sample_size]
+    print(len(references))
     print("{} molecule sampled at random".format(args.sample_size))
     mol_references = convert_smi_to_mol(references)
     print(len(mol_references))

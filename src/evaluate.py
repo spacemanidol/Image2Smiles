@@ -263,10 +263,10 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Evaluate smiles captioning')
-    parser.add_argument('--reference_file', type=str, default='exp/references_validation.txt', help='reference img2smi file which is a tsv with SMI\tIMG.PNG')
-    parser.add_argument('--candidate_file', type=str, default='exp/osra_validation.txt', help='candidate img2smi file which is a tsv with SMI\tIMG.PNG')
-    parser.add_argument('--output_file', type=str, default ='exp/osra_validation_results.txt', help='Filename where eval results will be written')
-    parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer to use in BLEU evaluation')
+    parser.add_argument('--reference_file', type=str, default='output/predictions_valid/references.txt', help='reference img2smi file which is a tsv with SMI\tIMG.PNG')
+    parser.add_argument('--candidate_file', type=str, default='candidate.tx', help='candidate img2smi file which is a tsv with SMI\tIMG.PNG')
+    parser.add_argument('--output_file', type=str, default ='eval_results.txt', help='Filename where eval results will be written')
+    parser.add_argument('--tokenizer', default='data/tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer to use in BLEU evaluation')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with') 
     parser.add_argument('--img_size', default=256, type=int, help='Image size')
     args = parser.parse_args()
