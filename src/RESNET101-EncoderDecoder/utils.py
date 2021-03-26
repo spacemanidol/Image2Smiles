@@ -1,6 +1,8 @@
 from typing import List, Optional
 
 import torch
+import random
+import numpy as np
 import torch.distributed as dist
 from torch import Tensor
 
@@ -30,10 +32,43 @@ class NestedTensor(object):
     def __repr__(self):
         return str(self.tensors)
 
+def load_selfies(filename):
+    idx2selfies, selfies2idx = {}, {}
+    idx = 0
+    with open(filename) as f:
+        for l in f:
+            l = l.strip()
+            idx2selfies[idx] = l
+            selfies2idx[l] = idx
+            idx += 1
+    return idx2selfies, selfies2idx
+
+def under_max(image):
+    if image.mode != 'RGB':
+        image = image.convert("RGB")
+    shape = np.array(image.size, dtype=np.float)
+    long_dim = max(shape)
+    scale = MAX_DIM / long_dim
+    new_shape = (shape * scale).astype(int)
+    image = image.resize(new_shape)
+    return image
+
 def read_json(file_name):
     with open(file_name) as handle:
         out = json.load(handle)
     return out
+
+def set_seed(seed: int):
+    """
+    Helper function for reproducible behavior to set the seed in ``random``, ``numpy``, ``torch`` and/or ``tf`` (if
+    installed).
+    Args:
+        seed (:obj:`int`): The seed to set.
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
     if tensor_list[0].ndim == 3:
