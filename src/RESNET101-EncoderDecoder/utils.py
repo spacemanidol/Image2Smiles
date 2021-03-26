@@ -51,7 +51,14 @@ def save_model(model, optimizer, scheduler, epoch, args):
                 'lr_scheduler': lr_scheduler.state_dict(),
                 'epoch': epoch,
                 }, args.checkpoint+epoch)
-
+                
+def create_caption_and_mask(start_token, max_length):
+    caption_template = torch.zeros((1, max_length), dtype=torch.long)
+    mask_template = torch.ones((1, max_length), dtype=torch.bool)
+    caption_template[:, 0] = start_token
+    mask_template[:, 0] = False
+    return caption_template, mask_template
+    
 def under_max(image):
     if image.mode != 'RGB':
         image = image.convert("RGB")

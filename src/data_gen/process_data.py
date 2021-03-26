@@ -13,7 +13,6 @@ from tqdm import tqdm
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers, processors
 import selfies as sf
 
-
 def create_input_files(args, dataset_path, config_output_name, output_name, output_path, img_size, dataset_size=4000000):
     '''
     Creates input files for using with models.

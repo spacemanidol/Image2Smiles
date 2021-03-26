@@ -4,8 +4,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from utils import NestedTensor, nested_tensor_from_tensor_list, set_seed, load_selfies, save_model, create_caption_and_mask
-from encoder import Encoder
-from decoder import Decoder
+from dataset import MoleculeCaption
 
 from PIL import Image
 import argparse
@@ -61,10 +60,13 @@ def evaluate(model, criterion, data_loader, device):
     return validation_loss / total
 
 @torch.no_grad()
-def predict(model, image, device):
+def predict(model, image_path, device):
     model.eval()
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    config = Config()
+    start_token_id = selfies2idx['[start]']
+    end_token_id = selfies2idx['[end]']
+    pad_token_id = selfies2idx['[pad]']
+    vocab_size = len(selfies2idx)
     start_token = tokenizer.convert_tokens_to_ids(tokenizer._cls_token)
     end_token = tokenizer.convert_tokens_to_ids(tokenizer._sep_token)
     image = Image.open(image_path)
@@ -87,14 +89,14 @@ def predict(model, image, device):
 def main(args):
     print("Loading selfies")
     idx2selfies, selfies2idx = load_selfies(args.selfies_vocab)
-    print("Selfies loaded.\n Vocab size {}".format(idx2selfies))
+    print("Selfies loaded.\nVocab size {}".format(len(idx2selfies)))
 
     print("Loading Model")
     if args.cuda:
         device = "cuda"
     else:
         device = "cpu"    
-    device = torch.device(args.device)
+    device = torch.device(device)
     set_seed(args.seed)
 
     if args.do_train:
@@ -107,15 +109,16 @@ def main(args):
     if args.do_eval:
         print("Loading eval data")
         evalData = MoleculeCaption(args.eval_data_dir, args.max_length)   
-        sampler = torch.utils.data.SequentialSampler(validationData)
+        sampler = torch.utils.data.SequentialSampler(evalData)
         data_loader_eval = DataLoader(evalData, args.batch_size, sampler=sampler, drop_last=False, num_workers=args.num_workers)
+        print("Eval data loaded successfully it has {} samples".format(len(evalData)))
     
-    for image, mask, caption, caption_mask, caption_lengh in data_loader_train:
+    for image, mask, caption, caption_mask, caption_lengh in data_loader_eval:
         print(image)
         print(mask)
         print(caption)
         print(caption_mask)
-        print(caption_length)
+        print(caption_lengh)
         break
     
     """
@@ -152,12 +155,6 @@ def main(args):
         lr_scheduler.step()
         print(f"Training Loss: {epoch_loss}")
 
-        torch.save({
-            'model': model.state_dict(),
-            'optimizer': optimizer.state_dict(),
-            'lr_scheduler': lr_scheduler.state_dict(),
-            'epoch': epoch,
-        }, config.checkpoint)
 
         validation_loss = evaluate(model, criterion, data_loader_val, device)
         print(f"Validation Loss: {validation_loss}")
@@ -167,6 +164,9 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Molecule Captioning via RESNET + ENCODER DECODER')  
     parser.add_argument('--num_workers', default=8, type=int, help='Workers for data loading')
+    parser.add_argument('--training_data_dir', default='data/training_images', type=str, help='Folder where training images are located')
+    parser.add_argument('--eval_data_dir', default='data/validation_images', type=str, help='Folder where validation images are located')
+    parser.add_argument('--seed', default=42, type=int, help='seed value')
     parser.add_argument('--batch_size', default=32, type=int, help='Size of sampled batch')
     parser.add_argument('--cuda', action='store_true', help='use CUDA')
     parser.add_argument('--max_length', type=int, default=150, help='Max length of tokenized smiles')
