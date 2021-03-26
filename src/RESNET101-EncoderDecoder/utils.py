@@ -43,6 +43,15 @@ def load_selfies(filename):
             idx += 1
     return idx2selfies, selfies2idx
 
+
+def save_model(model, optimizer, scheduler, epoch, args):
+    torch.save({
+                'model': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'lr_scheduler': lr_scheduler.state_dict(),
+                'epoch': epoch,
+                }, args.checkpoint+epoch)
+
 def under_max(image):
     if image.mode != 'RGB':
         image = image.convert("RGB")
