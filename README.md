@@ -15,10 +15,6 @@ conda env create -f environment.yaml
 ### Data
 Data is the collection of a bunch of different SMILES molecules. These smiles strings were joined, shuffled and then images were created from each of the strings. The Validation and Evaluation sets consists of 100,000 image and smiles captions. While experimenting with model tweaks we recommend a subsample of 10,000 images for validation to allow for quicker evaluation. The training corpus consists of ~20m smile images. For ease of experimentation we have produced processed files and stored them on Azure. 
 
-[Training set]()
-[Validation Set]()
-[Evaluation Set]()
-
 ### Tokenizers
 ```bash
 python src/train_tokenizer.py  --training_files data/ --do_train --do_test --tokenizer_name tokenizer_vocab_20000.json --vocab_size 20000 --min_frequency 2

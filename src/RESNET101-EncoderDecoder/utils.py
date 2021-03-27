@@ -50,7 +50,7 @@ def save_model(model, optimizer, scheduler, epoch, args):
                 'optimizer': optimizer.state_dict(),
                 'lr_scheduler': lr_scheduler.state_dict(),
                 'epoch': epoch,
-                }, args.checkpoint+epoch)
+                }, args.model_path+epoch)
                 
 def create_caption_and_mask(start_token, max_length):
     caption_template = torch.zeros((1, max_length), dtype=torch.long)

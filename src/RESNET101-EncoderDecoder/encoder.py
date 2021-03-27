@@ -47,11 +47,9 @@ class PositionEmbeddingLearned(nn.Module):
         self.row_embed = nn.Embedding(50, num_pos_feats)
         self.col_embed = nn.Embedding(50, num_pos_feats)
         self.reset_parameters()
-
     def reset_parameters(self):
         nn.init.uniform_(self.row_embed.weight)
         nn.init.uniform_(self.col_embed.weight)
-
     def forward(self, tensor_list: NestedTensor):
         x = tensor_list.tensors
         h, w = x.shape[-2:]
@@ -77,7 +75,6 @@ class FrozenBatchNorm2d(torch.nn.Module):
         num_batches_tracked_key = prefix + 'num_batches_tracked'
         if num_batches_tracked_key in state_dict:
             del state_dict[num_batches_tracked_key]
-
         super(FrozenBatchNorm2d, self)._load_from_state_dict(
             state_dict, prefix, local_metadata, strict,
             missing_keys, unexpected_keys, error_msgs)
@@ -91,12 +88,12 @@ class FrozenBatchNorm2d(torch.nn.Module):
         bias = b - rm * scale
         return x * scale + bias
 
-class RESNET101(nn.Module):
-    def __init__(self, encoder: nn.Module, num_channels: int):
+class Encoder(nn.Module):
+    def __init__(self):
         super().__init__()
-        encoder = getattr(torchvision.models, name)(replace_stride_with_dilation=[False, False, True],pretrained=is_main_process(), norm_layer=FrozenBatchNorm2d)
-        self.body = IntermediateLayerGetter(encoder, return_layers={'layer4': "0"})
-        self.num_channels = num_channels
+        self.encoder = getattr(torchvision.models, 'resnet101')(replace_stride_with_dilation=[False, False, True],pretrained=is_main_process(), norm_layer=FrozenBatchNorm2d)
+        self.body = IntermediateLayerGetter(self.encoder, return_layers={'layer4': "0"})
+        self.num_channels = 2048
 
     def forward(self, tensor_list: NestedTensor):
         xs = self.body(tensor_list.tensors)
@@ -108,17 +105,9 @@ class RESNET101(nn.Module):
             out[name] = NestedTensor(x, mask)
         return out
 
-
-class RESNET101(Encoder):
-    """ResNet backbone with frozen BatchNorm."""
-    def __init__(self, name: str,):
-        encoder = getattr(torchvision.models, name)(replace_stride_with_dilation=[False, False, True],pretrained=is_main_process(), norm_layer=FrozenBatchNorm2d)
-        super().__init__(encoder, True , 2048, False)
-
-
 class Joiner(nn.Sequential):
-    def __init__(self, backbone, position_embedding):
-        super().__init__(backbone, position_embedding)
+    def __init__(self, encoder, position_embedding):
+        super().__init__(encoder, position_embedding)
     def forward(self, tensor_list: NestedTensor):
         xs = self[0](tensor_list)
         out: List[NestedTensor] = []
@@ -129,13 +118,7 @@ class Joiner(nn.Sequential):
             pos.append(self[1](x).to(x.tensors.dtype))
         return out, pos
 
-class Resnet101Encoder(nn.Module):
-    def __init__(self)
-
-
-def build_backbone(config):
-    position_embedding = PositionEmbeddingSine(hidden_dimensions/2, normalize=True)
-    backbone = Backbone(config.backbone, train_backbone, return_interm_layers, config.dilation)
-    model = Joiner(backbone, position_embedding)
-    model.num_channels = backbone.num_channels
+def create_encoder(hidden_dimensions=256, num_channels=2048):
+    model = Joiner(Encoder(), PositionEmbeddingSine(hidden_dimensions/2, normalize=True))
+    model.num_channels = num_channels
     return model

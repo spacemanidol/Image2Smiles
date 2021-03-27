@@ -6,28 +6,21 @@ import torch.nn.functional as F
 from torch import nn, Tensor
 
 class Transformer(nn.Module):
-
-    def __init__(self, config, d_model=512, nhead=8, num_encoder_layers=6,
-                 num_decoder_layers=6, dim_feedforward=2048, dropout=0.1,
-                 activation="relu", normalize_before=False,
+    def __init__(self, vocab_size=717, hidden_dim=256, pad_token_id=277, 
+                 max_position_embeddings=128, dropout=0.1, layer_norm_eps=1e-12,
+                 d_model=512, nhead=8, num_encoder_layers=3,
+                 num_decoder_layers=3, dim_feedforward=2048,
+                 activation="relu", normalize_before=True,
                  return_intermediate_dec=False):
         super().__init__()
-
-        encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward,
-                                                dropout, activation, normalize_before)
+        encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward,dropout, activation, normalize_before)
         encoder_norm = nn.LayerNorm(d_model) if normalize_before else None
-        self.encoder = TransformerEncoder(
-            encoder_layer, num_encoder_layers, encoder_norm)
-
-        self.embeddings = DecoderEmbeddings(config)
-        decoder_layer = TransformerDecoderLayer(d_model, nhead, dim_feedforward,
-                                                dropout, activation, normalize_before)
+        self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
+        self.embeddings = DecoderEmbeddings(vocab_size, hidden_dim, pad_token_id, max_position_embeddings, dropout, layer_norm_eps)
+        decoder_layer = TransformerDecoderLayer(d_model, nhead, dim_feedforward,dropout, activation, normalize_before)
         decoder_norm = nn.LayerNorm(d_model)
-        self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm,
-                                          return_intermediate=return_intermediate_dec)
-
+        self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm,return_intermediate=return_intermediate_dec)
         self._reset_parameters()
-
         self.d_model = d_model
         self.nhead = nhead
 
@@ -37,21 +30,17 @@ class Transformer(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, src, mask, pos_embed, tgt, tgt_mask):
-        # flatten NxCxHxW to HWxNxC
         bs, c, h, w = src.shape
         src = src.flatten(2).permute(2, 0, 1)
         pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
         mask = mask.flatten(1)
-
         tgt = self.embeddings(tgt).permute(1, 0, 2)
         query_embed = self.embeddings.position_embeddings.weight.unsqueeze(1)
         query_embed = query_embed.repeat(1, bs, 1)
-
         memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask, tgt_key_padding_mask=tgt_mask,
                           pos=pos_embed, query_pos=query_embed,
                           tgt_mask=generate_square_subsequent_mask(len(tgt)).to(tgt.device))
-
         return hs
 
 
@@ -267,34 +256,24 @@ class TransformerDecoderLayer(nn.Module):
 
 
 class DecoderEmbeddings(nn.Module):
-    def __init__(self, config):
+    def __init__(self, vocab_size=717, hidden_dim=256, pad_token_id=277, max_position_embeddings=128, dropout=0.1, layer_norm_eps=1e-12):
         super().__init__()
-        self.word_embeddings = nn.Embedding(
-            config.vocab_size, config.hidden_dim, padding_idx=config.pad_token_id)
-        self.position_embeddings = nn.Embedding(
-            config.max_position_embeddings, config.hidden_dim
-        )
-
-        self.LayerNorm = torch.nn.LayerNorm(
-            config.hidden_dim, eps=config.layer_norm_eps)
-        self.dropout = nn.Dropout(config.dropout)
+        self.word_embeddings = nn.Embedding(vocab_size,hidden_dim, padding_idx=pad_token_id)
+        self.position_embeddings = nn.Embedding(max_position_embeddings, hidden_dim)
+        self.LayerNorm = torch.nn.LayerNorm(hidden_dim, eps=layer_norm_eps)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         input_shape = x.size()
         seq_length = input_shape[1]
         device = x.device
-
-        position_ids = torch.arange(
-            seq_length, dtype=torch.long, device=device)
+        position_ids = torch.arange(seq_length, dtype=torch.long, device=device)
         position_ids = position_ids.unsqueeze(0).expand(input_shape)
-
         input_embeds = self.word_embeddings(x)
         position_embeds = self.position_embeddings(position_ids)
-
         embeddings = input_embeds + position_embeds
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
-
         return embeddings
 
 
@@ -322,15 +301,4 @@ def generate_square_subsequent_mask(sz):
     return mask
 
 
-def build_transformer(config):
-    return Transformer(
-        config,
-        d_model=config.hidden_dim,
-        dropout=config.dropout,
-        nhead=config.nheads,
-        dim_feedforward=config.dim_feedforward,
-        num_encoder_layers=config.enc_layers,
-        num_decoder_layers=config.dec_layers,
-        normalize_before=config.pre_norm,
-        return_intermediate_dec=False,
-    )
+

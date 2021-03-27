@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 
 from utils import NestedTensor, nested_tensor_from_tensor_list, set_seed, load_selfies, save_model, create_caption_and_mask
 from dataset import MoleculeCaption
+from caption import Caption
 
 from PIL import Image
 import argparse
@@ -16,7 +17,7 @@ import os
 import tqdm
 
 import wandb
-
+wandb.init(project="MoleculeCaptioning")
 def train(model, criterion, data_loader,optimizer, device, epoch, max_norm):
     model.train()
     criterion.train()
@@ -24,20 +25,17 @@ def train(model, criterion, data_loader,optimizer, device, epoch, max_norm):
     total = len(data_loader)
     with tqdm.tqdm(total=total) as pbar:
         for images, masks, caps, cap_masks in data_loader:
-            samples = utils.NestedTensor(images, masks).to(device)
+            samples = NestedTensor(images, masks).to(device)
             captions = caps.to(device)
             caption_masks = cap_masks.to(device)
             outputs = model(samples, caps[:, :-1], cap_masks[:, :-1])
             loss = criterion(outputs.permute(0, 2, 1), caps[:, 1:])
             loss_value = loss.item()
+            wandb.log({"loss":loss_value})
             epoch_loss += loss_value
-            if not math.isfinite(loss_value):
-                print(f'Loss is {loss_value}, stopping training')
-                sys.exit(1)
             optimizer.zero_grad()
             loss.backward()
-            if max_norm > 0:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
             optimizer.step()
             pbar.update(1)
     return epoch_loss / total
@@ -50,12 +48,14 @@ def evaluate(model, criterion, data_loader, device):
     total = len(data_loader)
     with tqdm.tqdm(total=total) as pbar:
         for images, masks, caps, cap_masks in data_loader:
-            samples = utils.NestedTensor(images, masks).to(device)
+            samples = NestedTensor(images, masks).to(device)
+            print(samples)
             caps = caps.to(device)
             cap_masks = cap_masks.to(device)
             outputs = model(samples, caps[:, :-1], cap_masks[:, :-1])
             loss = criterion(outputs.permute(0, 2, 1), caps[:, 1:])
             validation_loss += loss.item()
+            wandb.log({"val_loss":loss.item()})
             pbar.update(1)
     return validation_loss / total
 
@@ -90,13 +90,29 @@ def main(args):
     print("Loading selfies")
     idx2selfies, selfies2idx = load_selfies(args.selfies_vocab)
     print("Selfies loaded.\nVocab size {}".format(len(idx2selfies)))
-
     print("Loading Model")
     if args.cuda:
         device = "cuda"
     else:
         device = "cpu"    
     device = torch.device(device)
+    start_epoch =  1
+    if args.load_model:
+        checkpoint = torch.load(args.model_path)
+        model = checkpoint['model']
+        optimizer = checkpoint['optimizer']
+        lr_scheduler = checkpoint['lr_scheduler']
+        start_epoch = checkpoint['epoch']
+    else:
+        model = Caption()
+        param_dicts = [{"params": [p for n, p in model.named_parameters()],"lr": args.lr,},]
+        optimizer = torch.optim.AdamW(param_dicts, lr=args.lr, weight_decay=args.weight_decay)
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size)
+
+    
+    print("Model has {} parameters".format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
+    model = model.to(device)
+    criterion = torch.nn.CrossEntropyLoss()
     set_seed(args.seed)
 
     if args.do_train:
@@ -108,59 +124,26 @@ def main(args):
         print("Training data loaded successfully it has {} samples".format(len(trainingData)))
     if args.do_eval:
         print("Loading eval data")
-        evalData = MoleculeCaption(args.eval_data_dir, args.max_length)   
+        evalData = MoleculeCaption(args.eval_data_dir, args.max_length, args.eval_data_size)   
         sampler = torch.utils.data.SequentialSampler(evalData)
         data_loader_eval = DataLoader(evalData, args.batch_size, sampler=sampler, drop_last=False, num_workers=args.num_workers)
         print("Eval data loaded successfully it has {} samples".format(len(evalData)))
-    
-    for image, mask, caption, caption_mask, caption_lengh in data_loader_eval:
-        print(image)
-        print(mask)
-        print(caption)
-        print(caption_mask)
-        print(caption_lengh)
-        break
-    
-    """
 
-    model, criterion = caption.build_model(config)
-    model.to(device)
+    if args.do_train:
+        for epoch in range(start_epoch, args.epochs):
+            if args.do_eval:
+                eval_loss = evaluate(model, criterion, data_loader_eval, device)
+                print("Eval Loss at epoch {}:{}".format(epoch, eval_loss))
+            save_model(model, optimizer, scheduler, epoch, args)
+            print("Starting Training for epoch :{}".format(epoch))
+            train_loss = train(model, criterion, data_loader_train,optimizer, device, epoch, args.clip_max_norm)
+            print("Epoch Loss:{}".format(train_loss))
+            save_model(model, optimizer, scheduler, epoch, args)
 
-    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Number of params: {n_parameters}")
+    if args.do_eval:
+        eval_loss = evaluate(model, criterion, data_loader_eval, device)
+        print("Eval Loss:{}".format( eval_loss))
 
-    param_dicts = [
-        {"params": [p for n, p in model.named_parameters(
-        ) if "backbone" not in n and p.requires_grad]},
-        {
-            "params": [p for n, p in model.named_parameters() if "backbone" in n and p.requires_grad],
-            "lr": config.lr_backbone,
-        },
-    ]
-    optimizer = torch.optim.AdamW(param_dicts, lr=args.lr, weight_decay=config.weight_decay)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, config.lr_drop)
-
-    if os.path.exists(config.checkpoint):
-        print("Loading Checkpoint...")
-        checkpoint = torch.load(config.checkpoint, map_location='cpu')
-        model.load_state_dict(checkpoint['model'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
-        config.start_epoch = checkpoint['epoch'] + 1
-
-    print("Start Training..")
-    for epoch in range(config.start_epoch, config.epochs):
-        print(f"Epoch: {epoch}")
-        epoch_loss = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, config.clip_max_norm)
-        lr_scheduler.step()
-        print(f"Training Loss: {epoch_loss}")
-
-
-        validation_loss = evaluate(model, criterion, data_loader_val, device)
-        print(f"Validation Loss: {validation_loss}")
-
-        print()
-"""
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Molecule Captioning via RESNET + ENCODER DECODER')  
     parser.add_argument('--num_workers', default=8, type=int, help='Workers for data loading')
@@ -174,31 +157,14 @@ if __name__ == "__main__":
     parser.add_argument('--do_train', action='store_true', help='Train model')
     parser.add_argument('--do_eval', action='store_true', help='Eval model')
     parser.add_argument('--do_predict', action='store_true', help='Predict')
+    parser.add_argument('--load_model', action='store_true', help='Load model')
+    parser.add_argument('--model_path', default='model_path', type=str, help='model path')
+    parser.add_argument('--eval_data_size', type=int, default=5000, help='How much of eval to run')
     parser.add_argument('--selfies_vocab', default='data/selfies.vocab', type=str, help='vocab mapping for selfies')
-    parser.add_argument('--encoder_lr', default=1e-5, type=float, help='encoder learning rate')
-    parser.add_argument('--decoder_lr', default=4e-4, type=float, help='decoder learning rate')
+    parser.add_argument('--lr', default=4e-4, type=float, help='decoder learning rate')
     parser.add_argument('--lr_step_size', default=30, type=int, help='Step size for lr decay')
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='Learning rate weight decay')
     parser.add_argument('--dropout', default=0.1, type=float, help='Rate of dropout')
     parser.add_argument('--clip_max_norm', default=0.1)
     args = parser.parse_args()
     main(args)
-"""
-        # Transformer
-        self.hidden_dim = 256
-        self.pad_token_id = 0
-        self.max_position_embeddings = 128
-        self.layer_norm_eps = 1e-12
-        self.dropout = 0.1
-        self.vocab_size = 30522
-
-        self.enc_layers = 6
-        self.dec_layers = 6
-        self.dim_feedforward = 2048
-        self.nheads = 8
-        self.pre_norm = True
-
-        # Dataset
-        self.dir = '../coco'
-        self.limit = -1
-        """

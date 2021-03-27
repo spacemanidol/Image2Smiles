@@ -1,41 +1,41 @@
-class MoleculeCaption(nn.Module):
-    def __init__(self, encode, transformer, hidden_dim, vocab_size):
-        super().__init__()
-        self.encoder = backbone
-        self.input_proj = nn.Conv2d(backbone.num_channels, hidden_dim, kernel_size=1)
-        self.transformer = transformer
-        self.mlp = MLP(hidden_dim, 512, vocab_size, 3)
+import torch
+from torch import nn
+import torch.nn.functional as F
 
-    def forward(self, samples, target, target_mask):
-        if not isinstance(samples, NestedTensor):
-            samples = nested_tensor_from_tensor_list(samples)
+import argparse
+import numpy as np
+import math
+import time
+import sys
+import os
 
-        features, pos = self.backbone(samples)
-        src, mask = features[-1].decompose()
+from utils import NestedTensor, nested_tensor_from_tensor_list 
+from encoder import create_encoder
+from decoder import Transformer
 
-        assert mask is not None
-
-        hs = self.transformer(self.input_proj(src), mask,
-                              pos[-1], target, target_mask)
-        out = self.mlp(hs.permute(1, 0, 2))
-        return out
-
-
-class MLP(nn.Module):
-    """ Very simple multi-layer perceptron (also called FFN)"""
+class FFN(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
         super().__init__()
         self.num_layers = num_layers
         h = [hidden_dim] * (num_layers - 1)
-        self.layers = nn.ModuleList(nn.Linear(n, k)
-                                    for n, k in zip([input_dim] + h, h + [output_dim]))
-
+        self.layers = nn.ModuleList(nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim]))
     def forward(self, x):
         for i, layer in enumerate(self.layers):
             x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
-        return x
+        return x 
 
-    backbone = build_backbone(config)
-    transformer = build_transformer(config)
-    model = Caption(backbone, transformer, config.hidden_dim, config.vocab_size)
-    criterion = torch.nn.CrossEntropyLoss()  
+class Caption(nn.Module):
+    def __init__(self, hidden_dimensions=256, vocab_size=717, input_dim=512, num_layers=3):
+        super().__init__()
+        self.encoder = create_encoder(hidden_dimensions)
+        self.input_proj = nn.Conv2d(self.encoder.num_channels, hidden_dimensions, kernel_size=1)
+        self.decoder = Transformer()
+        self.ffn = FFN(hidden_dimensions, input_dim, vocab_size, num_layers)
+    def forward(self, inputs, target, target_mask):
+        if not isinstance(inputs, NestedTensor):
+            inputs = nested_tensor_from_tensor_list(inputs)
+        features, pos = self.encoder(inputs)
+        src, mask = features[-1].decompose()
+        hs = self.decoder(self.input_proj(src), mask,pos[-1], target, target_mask)
+        out = self.ffn(hs.permute(1, 0, 2))
+        return out
