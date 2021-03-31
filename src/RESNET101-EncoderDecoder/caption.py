@@ -25,7 +25,7 @@ class FFN(nn.Module):
         return x 
 
 class Caption(nn.Module):
-    def __init__(self, hidden_dimensions=256, vocab_size=717, input_dim=512, num_layers=3):
+    def __init__(self, hidden_dimensions=256, vocab_size=717, input_dim=512, num_layers=6):
         super().__init__()
         self.encoder = create_encoder(hidden_dimensions)
         self.input_proj = nn.Conv2d(self.encoder.num_channels, hidden_dimensions, kernel_size=1)
@@ -36,8 +36,8 @@ class Caption(nn.Module):
             inputs = nested_tensor_from_tensor_list(inputs)
         features, pos = self.encoder(inputs)
         src, mask = features[-1].decompose()
-        print(pos)
-        print("MEOW")
+        #print(mask)
+        #exit(0)
         hs = self.decoder(self.input_proj(src), mask,pos[-1], target, target_mask)
         out = self.ffn(hs.permute(1, 0, 2))
         return out

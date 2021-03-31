@@ -114,11 +114,10 @@ class Joiner(nn.Sequential):
         pos = []
         for name, x in xs.items():
             out.append(x)
-            # position encoding
             pos.append(self[1](x).to(x.tensors.dtype))
         return out, pos
 
-def create_encoder(hidden_dimensions=256, num_channels=2048):
+def create_encoder(hidden_dimensions=512, num_channels=2048):
     model = Joiner(Encoder(), PositionEmbeddingSine(hidden_dimensions/2, normalize=True))
     model.num_channels = num_channels
     return model

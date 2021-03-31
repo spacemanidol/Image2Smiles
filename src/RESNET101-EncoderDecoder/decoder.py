@@ -7,10 +7,10 @@ from torch import nn, Tensor
 
 class Transformer(nn.Module):
     def __init__(self, vocab_size=717, hidden_dim=256, pad_token_id=277, 
-                 max_position_embeddings=128, dropout=0.1, layer_norm_eps=1e-12,
-                 d_model=512, nhead=8, num_encoder_layers=3,
+                 max_position_embeddings=149, dropout=0.1, layer_norm_eps=1e-12,
+                 d_model=256, nhead=8, num_encoder_layers=3,
                  num_decoder_layers=3, dim_feedforward=2048,
-                 activation="relu", normalize_before=False,
+                 activation="relu", normalize_before=True,
                  return_intermediate_dec=False):
         super().__init__()
         encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward,dropout, activation, normalize_before)
@@ -31,7 +31,6 @@ class Transformer(nn.Module):
 
     def forward(self, src, mask, pos_embed, tgt, tgt_mask):
         bs, c, h, w = src.shape
-        print("Here")
         src = src.flatten(2).permute(2, 0, 1)
         pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
         mask = mask.flatten(1)
@@ -118,7 +117,6 @@ class TransformerEncoderLayer(nn.Module):
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.dropout = nn.Dropout(dropout)
         self.linear2 = nn.Linear(dim_feedforward, d_model)
-
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
         self.dropout1 = nn.Dropout(dropout)

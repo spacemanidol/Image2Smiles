@@ -35,6 +35,8 @@ def load_img2smi(filename):
                 img2smi[l[0]] = 'NONE'
                 count += 1
             else:
+                if l[0] == '':
+                    l[0] = 'NONE'
                 img2smi[l[1]] = l[0]
             if l[0] == 'NONE':
                 count += 1
@@ -95,7 +97,10 @@ def bleu_eval(args, references, candidates):
         score = 0
         if img in candidates:
             reference = tokenizer.encode(references[img])
-            candidate = tokenizer.encode(candidates[img])
+            try:
+                candidate = tokenizer.encode(candidates[img])
+            except:
+                pass
             score = sentence_bleu(reference.tokens, candidate.tokens,weights=(1.0, 0, 0, 0))
         scores.append(score)
     print("Done calculating BLEU-1. {} average score".format(round(np.mean(scores),4)))
@@ -257,7 +262,7 @@ def main(args):
     rd_score = rd_fingerprint_evaluation(reference_mols, candidate_mols)
     morgan_score = morgan_fingerprint_evaluation(reference_mols, candidate_mols)
     image_distance = img_distance_eval(args, reference_img2smi, candidate_img2smi, transform)
-    exact_match = get_exact_match(reference_img2smi, candidate_img2smi):
+    exact_match = get_exact_match(reference_img2smi, candidate_img2smi)
     with open(args.output_file, 'w') as w:
         w.write("Reference File:{}\n".format(args.reference_file))
         w.write("Candidate File:{}\n".format(args.candidate_file))

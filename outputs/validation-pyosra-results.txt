@@ -1,0 +1,11 @@
+Reference File:src/RESNET101-EncoderDecoder/data/validation_images/labels_short.smi
+Candidate File:outputs/validation-pyosra-predictions.txt
+There are 5000 examples being evaluatedPercent Captions Generated:0.7956
+Percent Valid SMI Generated:0.6034
+Exact matches for Cannonical SMI strings:2
+Levenshtein Distance:32.7606
+BLEU-1 using src/RESNET101-EncoderDecoder/data/tokenizers/tokenizer_vocab_2000.json tokenizer:0.0512
+MACCS Fingerprinting Tanimoto Similarity:0.3598
+RD Path Fingerprinting Tanimoto Similarity:0.2789
+Morgan Fingerprint Tanimoto Similarity:0.2676
+Image Distance:9.1898

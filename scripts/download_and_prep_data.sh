@@ -89,5 +89,3 @@ python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_500.json --outp
 python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --output_prefix vocab2000 --data_dir /semihot/img2smidata/evaluation_images/ --data_split evaluation --image_output_filename evaluation --output_path data/
 python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_20000.json --output_prefix vocab20000 --data_dir /semihot/img2smidata/evaluation_images/ --data_split evaluation --image_output_filename evaluation --output_path data/ --process_img
 echo('Done preprocessing data. You may move on to model training.')
-
-python preprocess_data.py --tokenizer tokenizers/tokenizer_vocab_2000.json --data_dir data/evaluation_images/ --data_split evaluation --image_output_filename evaluation --output_path data/ --process_img --output_prefix vocab2000

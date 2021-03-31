@@ -1,0 +1,10 @@
+loaded smiles
+1000 molecule sampled at random
+Done Converting SMI to mol
+SMI converted to mol
+Calculating Levenshtein Distance
+Mean Levenshtein:39.5376
+Loading Tokenizer: RESNET101-EncoderDecoder/data/tokenizers/tokenizer_vocab_20000.json.
+Mean BLEU-1:0.0537
+Mean Morgan Fingergprint:0.1106
+Mean RDkit Fingergprint:0.2318
