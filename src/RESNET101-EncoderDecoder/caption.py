@@ -36,6 +36,8 @@ class Caption(nn.Module):
             inputs = nested_tensor_from_tensor_list(inputs)
         features, pos = self.encoder(inputs)
         src, mask = features[-1].decompose()
+        print(pos)
+        print("MEOW")
         hs = self.decoder(self.input_proj(src), mask,pos[-1], target, target_mask)
         out = self.ffn(hs.permute(1, 0, 2))
         return out

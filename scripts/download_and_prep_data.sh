@@ -58,7 +58,7 @@ echo('Done Making Cannonical')
 echo('Converting Data to Images')
 python create_images_from_smiles.py --input_file data/validation.smi --output_folder data/validation_images
 python create_images_from_smiles.py --input_file data/evaluation.smi --output_folder data/evaluation_images
-python create_images_from_smiles.py --input_file data/training.smi --output_folder data/training_images
+  python create_images_from_smiles.py --input_file data/training.smi --output_folder data/training_images
 echo('Done Converting Data to Images')
 
 echo('Training Tokenizers')

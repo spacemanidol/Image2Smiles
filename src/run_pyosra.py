@@ -9,7 +9,7 @@ def main(args):
         with open(args.output,'w') as w:
             for i, l in enumerate(tqdm(f)):
                 path = os.path.join(args.directory_path,l.strip())
-                result = csr.extract_image(path)
+                result = osra_rgroup.read_diagram(path, False, superatom_file='superatom.txt', spelling_file='spelling.txt')
                 w.write("{}\t{}\n".format(top, l.strip()))
 
 if __name__ == '__main__':
