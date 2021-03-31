@@ -1,17 +1,17 @@
-import chemschematicresolver as csr
 import osra_rgroup
 import os
-from tqdm import tqdm
 import argparse
 
 def main(args):
     with open(args.images_to_predict,'r') as f:
         with open(args.output,'w') as w:
-            for i, l in enumerate(tqdm(f)):
-                path = os.path.join(args.directory_path,l.strip())
-                result = osra_rgroup.read_diagram(path, False, superatom_file='superatom.txt', spelling_file='spelling.txt')
-                w.write("{}\t{}\n".format(top, l.strip()))
-
+            for l in f:
+                try:
+                    path = os.path.join(args.directory_path,l.strip().split('\t')[1])
+                    result = osra_rgroup.read_diagram(input_file=path, superatom_file='superatom.txt', spelling_file='spelling.txt')
+                    w.write("{}\t{}\n".format(result.strip(), l.strip().split('\t')[1]))
+                except:
+                    pass
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Prediction via CSR')
     parser.add_argument('--images_to_predict', default=None, type=str, help='a file indicating what images to predict. One png name per line')
