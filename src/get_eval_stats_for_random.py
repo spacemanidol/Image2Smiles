@@ -162,7 +162,7 @@ def load_smi(filename):
         for l in f:
             try:
 #                mol = Chem.MolFromSmiles(l.strip())
-                smi.append(l.strip())
+                smi.append(l.strip().split('\t')[0])
             except:
                 pass
     return smi
@@ -174,10 +174,8 @@ def main(args):
     print("loaded smiles")
     random.shuffle(smi)
     references = smi[:args.sample_size]
-    print(len(references))
     print("{} molecule sampled at random".format(args.sample_size))
     mol_references = convert_smi_to_mol(references)
-    print(len(mol_references))
     print("SMI converted to mol")
     print("Mean Levenshtein:{}".format(levenshtein_eval(references)))
     print("Mean BLEU-1:{}".format(bleu_eval(args, references)))
@@ -188,9 +186,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Base Metrics for random distribution')
-    parser.add_argument('--input_file', type=str, default='data/validation.smi', help='source of input smiles files')
-    parser.add_argument('--sample_size', type=int, default=100, help='amount of molecules to compare')
-    parser.add_argument('--tokenizer', default='data/tokenizers/tokenizer_vocab_2000.json', type=str, help='tokenizer to use in BLEU evaluation')
+    parser.add_argument('--input_file', type=str, default='RESNET101-EncoderDecoder/data/validation_images/labels.smi', help='source of input smiles files')
+    parser.add_argument('--sample_size', type=int, default=1000, help='amount of molecules to compare')
+    parser.add_argument('--tokenizer', default='RESNET101-EncoderDecoder/data/tokenizers/tokenizer_vocab_20000.json', type=str, help='tokenizer to use in BLEU evaluation')
     parser.add_argument('--img_size', default=256, type=int, help='Image size for imige overlap')
     args = parser.parse_args()
     main(args)
