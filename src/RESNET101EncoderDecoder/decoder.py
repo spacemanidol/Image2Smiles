@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
 
-device = "cuda:1"
+device = "cuda"
 class Transformer(nn.Module):
     def __init__(self, device, vocab_size=717, hidden_dim=256, pad_token_id=277, 
                  max_position_embeddings=149, dropout=0.1, layer_norm_eps=1e-12,

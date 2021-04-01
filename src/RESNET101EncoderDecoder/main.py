@@ -2,8 +2,9 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+import torchvision as tv
 
-from utils import NestedTensor, nested_tensor_from_tensor_list, set_seed, load_selfies, save_model, create_caption_and_mask
+from utils import NestedTensor, nested_tensor_from_tensor_list, set_seed, load_selfies, save_model, create_caption_and_mask, under_max
 from dataset import MoleculeCaption
 from caption import Caption
 
@@ -17,6 +18,7 @@ import os
 import tqdm
 
 import wandb
+import selfies as sf
 
 def train(args, model, criterion, data_loader,optimizer, device, epoch, max_norm, scheduler, data_loader_eval):
     model.train()
@@ -67,7 +69,7 @@ def evaluate(model, criterion, data_loader, device):
     return validation_loss / total
 
 @torch.no_grad()
-def predict(args,model, image_path, device):
+def predict_image(args, model, device, idx2selfies, selfies2idx):
     model.eval()
     val_transform = tv.transforms.Compose([
     tv.transforms.Lambda(under_max),
@@ -76,25 +78,83 @@ def predict(args,model, image_path, device):
     start_token_id = selfies2idx['[start]']
     end_token_id = selfies2idx['[end]']
     pad_token_id = selfies2idx['[pad]']
+    exclude = set()
+    exclude.add(start_token_id)
+    exclude.add(end_token_id)
+    exclude.add(pad_token_id)
     vocab_size = len(selfies2idx)
-    start_token = tokenizer.convert_tokens_to_ids(tokenizer._cls_token)
-    end_token = tokenizer.convert_tokens_to_ids(tokenizer._sep_token)
-    image = Image.open(image_path)
-    image = coco.val_transform(image)
-    image = image.unsqueeze(0)
-    caption, cap_mask = create_caption_and_mask(start_token_id, args.max_length)
-    output = evaluate()
-    result = tokenizer.decode(output[0].tolist(), skip_special_tokens=True)
-    print(result.capitalize())
-    for i in range(config.max_position_embeddings - 1):
+    image = Image.open(args.image_path)
+    image = val_transform(image)
+    image = image.unsqueeze(0).to(device)
+    caption, cap_mask = create_caption_and_mask(start_token_id, args.max_length-1)
+    cap_mask = cap_mask.to(device)
+    caption = caption.to(device)
+    for i in range(args.max_length - 2):
         predictions = model(image, caption, cap_mask)
         predictions = predictions[:, i, :]
         predicted_id = torch.argmax(predictions, axis=-1)
-        if predicted_id[0] == 102:
-            return caption
+        if predicted_id[0] == end_token_id: # aka 190
+            break
         caption[:, i+1] = predicted_id[0]
         cap_mask[:, i+1] = False
-    return caption
+    cap_len = 0
+    for i in cap_mask[0]:
+        if i == torch.ones(1).type(torch.bool)[0]:
+            break
+        else:
+            cap_len += 1
+    caption = caption[0][:cap_len].tolist()
+    selfies_caption = ' '.join([idx2selfies[i] for i in caption if i not in exclude ])
+    print("{}\t{}".format(sf.decoder(selfies_caption), args.image_path))
+
+@torch.no_grad()
+def predict_images(args, image_paths, model, device, idx2selfies, selfies2idx):
+    model.eval()
+    val_transform = tv.transforms.Compose([
+    tv.transforms.Lambda(under_max),
+    tv.transforms.ToTensor(),
+    tv.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    start_token_id = selfies2idx['[start]']
+    end_token_id = selfies2idx['[end]']
+    pad_token_id = selfies2idx['[pad]']
+    exclude = set()
+    exclude.add(start_token_id)
+    exclude.add(end_token_id)
+    exclude.add(pad_token_id)
+    vocab_size = len(selfies2idx)
+    with open(args.output_path, 'w') as w:
+        for image_path in image_paths:
+            image = Image.open(image_path)
+            image = val_transform(image)
+            image = image.unsqueeze(0).to(device)
+            caption, cap_mask = create_caption_and_mask(start_token_id, args.max_length-1)
+            cap_mask = cap_mask.to(device)
+            caption = caption.to(device)
+            for i in range(args.max_length - 2):
+                predictions = model(image, caption, cap_mask)
+                predictions = predictions[:, i, :]
+                predicted_id = torch.argmax(predictions, axis=-1)
+                if predicted_id[0] == end_token_id: # aka 190
+                    break
+                caption[:, i+1] = predicted_id[0]
+                cap_mask[:, i+1] = False
+            cap_len = 0
+            for i in cap_mask[0]:
+                if i == torch.ones(1).type(torch.bool)[0]:
+                    break
+                else:
+                    cap_len += 1
+            caption = caption[0][:cap_len].tolist()
+            selfies_caption = ' '.join([idx2selfies[i] for i in caption if i not in exclude ])
+            w.write("{}\t{}\n".format(sf.decoder(selfies_caption), args.image_path))
+
+def load_image(filename):
+    image_paths = []
+    with open(filename,'r') as f:
+        for l in f:
+            l = l.strip().split('\t')[1] #remove if not known file
+            image_paths.append(l)
+    return image_paths
 
 def main(args):
     print("Loading selfies")
@@ -102,7 +162,7 @@ def main(args):
     print("Selfies loaded.\nVocab size {}".format(len(idx2selfies)))
     print("Loading Model")
     if args.cuda:
-        device = "cuda:1"
+        device = "cuda"
     else:
         device = "cpu"    
     device = torch.device(device)
@@ -158,18 +218,24 @@ def main(args):
         print("Eval Loss:{}".format(eval_loss))
 
     if args.do_predict:
-        print(predict(model, args.image_path, device))
+        if args.predict_list != 'None':
+            image_paths = load_image(args.predict_list)
+            predict_image(args,image_paths, model, device, idx2selfies, selfies2idx)
+        else:
+            predict_image(args,model, device, idx2selfies, selfies2idx)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Molecule Captioning via RESNET + ENCODER DECODER')  
     parser.add_argument('--num_workers', default=8, type=int, help='Workers for data loading')
+    parser.add_argument('--output_file', default='predictions.tsv', type=str, help='file name for predictions')
+    parser.add_argument('--predict_list', default='None', type=str, help='Path of a file for images to predict')
     parser.add_argument('--train_data_dir', default='data/training_images', type=str, help='Folder where training images are located')
     parser.add_argument('--eval_data_dir', default='data/validation_images', type=str, help='Folder where validation images are located')
     parser.add_argument('--seed', default=42, type=int, help='seed value')
     parser.add_argument('--batch_size', default=32, type=int, help='Size of sampled batch')
     parser.add_argument('--cuda', action='store_true', help='use CUDA')
     parser.add_argument('--max_length', type=int, default=150, help='Max length of tokenized smiles')
-    parser.add_argument('--epochs', default=5, type=int, help='Train epochs')
+    parser.add_argument('--epochs', default=1, type=int, help='Train epochs')
     parser.add_argument('--image_path', default='molecule.png', type=str, help='Predict SMI of molecule expected SMI is Cc1nc(CN(C)c2ncc(C(=O)[O-])s2)n[nH]1')
     parser.add_argument('--do_train', action='store_true', help='Train model')
     parser.add_argument('--do_eval', action='store_true', help='Eval model')
