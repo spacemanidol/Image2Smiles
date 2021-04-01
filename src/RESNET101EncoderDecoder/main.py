@@ -67,9 +67,12 @@ def evaluate(model, criterion, data_loader, device):
     return validation_loss / total
 
 @torch.no_grad()
-def predict(model, image_path, device):
+def predict(args,model, image_path, device):
     model.eval()
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    val_transform = tv.transforms.Compose([
+    tv.transforms.Lambda(under_max),
+    tv.transforms.ToTensor(),
+    tv.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     start_token_id = selfies2idx['[start]']
     end_token_id = selfies2idx['[end]']
     pad_token_id = selfies2idx['[pad]']
@@ -79,7 +82,7 @@ def predict(model, image_path, device):
     image = Image.open(image_path)
     image = coco.val_transform(image)
     image = image.unsqueeze(0)
-    caption, cap_mask = create_caption_and_mask(start_token, config.max_position_embeddings)
+    caption, cap_mask = create_caption_and_mask(start_token_id, args.max_length)
     output = evaluate()
     result = tokenizer.decode(output[0].tolist(), skip_special_tokens=True)
     print(result.capitalize())
@@ -99,7 +102,7 @@ def main(args):
     print("Selfies loaded.\nVocab size {}".format(len(idx2selfies)))
     print("Loading Model")
     if args.cuda:
-        device = "cuda"
+        device = "cuda:1"
     else:
         device = "cpu"    
     device = torch.device(device)
@@ -175,7 +178,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_path', default='model_path', type=str, help='model path')
     parser.add_argument('--eval_data_size', type=int, default=4096 ,help='How much of eval to run')
     parser.add_argument('--selfies_vocab', default='data/selfies.vocab', type=str, help='vocab mapping for selfies')
-    parser.add_argument('--lr', default=1e-4, type=float, help='decoder learning rate')
+    parser.add_argument('--lr', default=1e-5, type=float, help='decoder learning rate')
     parser.add_argument('--lr_step_size', default=30, type=int, help='Step size for lr decay')
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='Learning rate weight decay')
     parser.add_argument('--dropout', default=0.1, type=float, help='Rate of dropout')
