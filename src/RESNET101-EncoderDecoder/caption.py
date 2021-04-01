@@ -25,19 +25,18 @@ class FFN(nn.Module):
         return x 
 
 class Caption(nn.Module):
-    def __init__(self, hidden_dimensions=256, vocab_size=717, input_dim=512, num_layers=6):
+    def __init__(self, device, hidden_dimensions=256, vocab_size=717, input_dim=512, num_layers=6):
         super().__init__()
-        self.encoder = create_encoder(hidden_dimensions)
-        self.input_proj = nn.Conv2d(self.encoder.num_channels, hidden_dimensions, kernel_size=1)
-        self.decoder = Transformer()
-        self.ffn = FFN(hidden_dimensions, input_dim, vocab_size, num_layers)
+        self.encoder = create_encoder(device, hidden_dimensions)
+        self.input_proj = nn.Conv2d(self.encoder.num_channels, hidden_dimensions, kernel_size=1).to(device)
+        self.decoder = Transformer(device)
+        self.ffn = FFN(hidden_dimensions, input_dim, vocab_size, num_layers).to(device)
+        self.device = device
     def forward(self, inputs, target, target_mask):
         if not isinstance(inputs, NestedTensor):
-            inputs = nested_tensor_from_tensor_list(inputs)
+            inputs = nested_tensor_from_tensor_list(inputs).to(self.device)
         features, pos = self.encoder(inputs)
         src, mask = features[-1].decompose()
-        #print(mask)
-        #exit(0)
-        hs = self.decoder(self.input_proj(src), mask,pos[-1], target, target_mask)
-        out = self.ffn(hs.permute(1, 0, 2))
+        hs = self.decoder(self.input_proj(src), mask,pos[-1], target, target_mask).to(self.device)
+        out = self.ffn(hs.permute(1, 0, 2)).to(self.device)
         return out

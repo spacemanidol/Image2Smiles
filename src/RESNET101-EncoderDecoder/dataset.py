@@ -50,7 +50,7 @@ class MoleculeCaption(Dataset):
         item = self.data[idx]
         caption = np.array(self.data[idx]['sentences'][0]['selfies_ids'])
         caption_length = self.data[idx]['sentences'][0]['selfies_length']
-        caption_mask = np.array([0 if i < caption_length else 1 for i in range(len(caption))])
+        caption_mask = np.array([False if i < caption_length else True for i in range(len(caption))])
         image = Image.open(os.path.join(self.data[idx]['filepath'], self.data[idx]['filename']))
         image = self.transform(image)
         image = nested_tensor_from_tensor_list(image.unsqueeze(0))

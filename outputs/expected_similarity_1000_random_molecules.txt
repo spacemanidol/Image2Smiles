@@ -8,3 +8,5 @@ Loading Tokenizer: RESNET101-EncoderDecoder/data/tokenizers/tokenizer_vocab_2000
 Mean BLEU-1:0.0537
 Mean Morgan Fingergprint:0.1106
 Mean RDkit Fingergprint:0.2318
+Mean MAACS Fingergprint:0.3424
+MEAN image distance:9.6914

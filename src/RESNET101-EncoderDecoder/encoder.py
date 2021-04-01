@@ -11,11 +11,12 @@ from torchvision.models._utils import IntermediateLayerGetter
 from utils import NestedTensor, is_main_process
 
 class PositionEmbeddingSine(nn.Module):
-    def __init__(self, num_pos_feats=64, temperature=10000, normalize=False, scale=None):
+    def __init__(self, device, num_pos_feats=64, temperature=10000, normalize=False, scale=None):
         super().__init__()
         self.num_pos_feats = num_pos_feats
         self.temperature = temperature
         self.normalize = normalize
+        self.device = device
         if scale is not None and normalize is False:
             raise ValueError("normalize should be True if scale is passed")
         if scale is None:
@@ -42,11 +43,12 @@ class PositionEmbeddingSine(nn.Module):
         return pos
 
 class PositionEmbeddingLearned(nn.Module):
-    def __init__(self, num_pos_feats=256):
+    def __init__(self, device,  num_pos_feats=256):
         super().__init__()
         self.row_embed = nn.Embedding(50, num_pos_feats)
         self.col_embed = nn.Embedding(50, num_pos_feats)
         self.reset_parameters()
+        self.device = device
     def reset_parameters(self):
         nn.init.uniform_(self.row_embed.weight)
         nn.init.uniform_(self.col_embed.weight)
@@ -61,6 +63,7 @@ class PositionEmbeddingLearned(nn.Module):
             x_emb.unsqueeze(0).repeat(h, 1, 1),
             y_emb.unsqueeze(1).repeat(1, w, 1),
         ], dim=-1).permute(2, 0, 1).unsqueeze(0).repeat(x.shape[0], 1, 1, 1)
+        print(pos)
         return pos
 
 class FrozenBatchNorm2d(torch.nn.Module):
@@ -89,11 +92,12 @@ class FrozenBatchNorm2d(torch.nn.Module):
         return x * scale + bias
 
 class Encoder(nn.Module):
-    def __init__(self):
+    def __init__(self, device):
         super().__init__()
         self.encoder = getattr(torchvision.models, 'resnet101')(replace_stride_with_dilation=[False, False, True],pretrained=is_main_process(), norm_layer=FrozenBatchNorm2d)
         self.body = IntermediateLayerGetter(self.encoder, return_layers={'layer4': "0"})
         self.num_channels = 2048
+        self.device = device
 
     def forward(self, tensor_list: NestedTensor):
         xs = self.body(tensor_list.tensors)
@@ -117,7 +121,8 @@ class Joiner(nn.Sequential):
             pos.append(self[1](x).to(x.tensors.dtype))
         return out, pos
 
-def create_encoder(hidden_dimensions=512, num_channels=2048):
-    model = Joiner(Encoder(), PositionEmbeddingSine(hidden_dimensions/2, normalize=True))
+def create_encoder(device, hidden_dimensions=512, num_channels=2048):
+    model = Joiner(Encoder(device), PositionEmbeddingSine(device, hidden_dimensions/2, normalize=True))
     model.num_channels = num_channels
+    model.device = device
     return model

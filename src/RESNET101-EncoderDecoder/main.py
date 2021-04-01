@@ -28,8 +28,8 @@ def train(args, model, criterion, data_loader,optimizer, device, epoch, max_norm
         for images, masks, caps, cap_masks in data_loader:
             i += 1
             samples = NestedTensor(images, masks).to(device)
-            captions = caps.to(device)
-            caption_masks = cap_masks.to(device)
+            caps = caps.to(device)
+            cap_masks = cap_masks.to(device)
             outputs = model(samples, caps[:, :-1], cap_masks[:, :-1])
             loss = criterion(outputs.permute(0, 2, 1), caps[:, 1:])
             loss_value = loss.item()
@@ -103,7 +103,9 @@ def main(args):
         device = "cpu"    
     device = torch.device(device)
     start_epoch =  1
-    model = Caption()
+    model = Caption(device)
+    if args.cuda:
+        pass #model = nn.DataParallel(model)
     param_dicts = [{"params": [p for n, p in model.named_parameters()],"lr": args.lr,},]
     optimizer = torch.optim.AdamW(param_dicts, lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size)
@@ -122,7 +124,7 @@ def main(args):
     if args.do_train:
         print("Loading training data")
         wandb.init(project="MoleculeCaptioning")
-        trainingData = MoleculeCaption(args.training_data_dir, args.max_length)
+        trainingData =  MoleculeCaption(args.train_data_dir, args.max_length)   #MoleculeCaption(args.training_data_dir, args.max_length)
         sampler = torch.utils.data.RandomSampler(trainingData)
         batch_sampler_train = torch.utils.data.BatchSampler(sampler, args.batch_size, drop_last=True)
         data_loader_train = DataLoader(trainingData, batch_sampler=batch_sampler_train, num_workers=args.num_workers)
@@ -157,7 +159,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Molecule Captioning via RESNET + ENCODER DECODER')  
     parser.add_argument('--num_workers', default=8, type=int, help='Workers for data loading')
-    parser.add_argument('--training_data_dir', default='data/training_images', type=str, help='Folder where training images are located')
+    parser.add_argument('--train_data_dir', default='data/training_images', type=str, help='Folder where training images are located')
     parser.add_argument('--eval_data_dir', default='data/validation_images', type=str, help='Folder where validation images are located')
     parser.add_argument('--seed', default=42, type=int, help='seed value')
     parser.add_argument('--batch_size', default=32, type=int, help='Size of sampled batch')
@@ -170,15 +172,15 @@ if __name__ == "__main__":
     parser.add_argument('--do_predict', action='store_true', help='Predict')
     parser.add_argument('--load_model', action='store_true', help='Load model')
     parser.add_argument('--model_path', default='model_path', type=str, help='model path')
-    parser.add_argument('--eval_data_size', type=int, default=1024, help='How much of eval to run')
+    parser.add_argument('--eval_data_size', type=int, default=1024 ,help='How much of eval to run')
     parser.add_argument('--selfies_vocab', default='data/selfies.vocab', type=str, help='vocab mapping for selfies')
     parser.add_argument('--lr', default=4e-4, type=float, help='decoder learning rate')
     parser.add_argument('--lr_step_size', default=30, type=int, help='Step size for lr decay')
     parser.add_argument('--weight_decay', default=1e-4, type=float, help='Learning rate weight decay')
     parser.add_argument('--dropout', default=0.1, type=float, help='Rate of dropout')
     parser.add_argument('--clip_max_norm', default=0.1)
-    parser.add_argument('--log_interval', default=100, type=int, help='log batch loss every n batches')
-    parser.add_argument('--scheduler_updates', default=1000, type=int, help='Update scheduler after how many batches')
+    parser.add_argument('--log_interval', default=10, type=int, help='log batch loss every n batches')
+    parser.add_argument('--scheduler_updates', default=2000, type=int, help='Update scheduler after how many batches')
     parser.add_argument('--eval_interval', default=5000, type=int, help='Evaluate model on validation every n batches')
     args = parser.parse_args()
     main(args)
