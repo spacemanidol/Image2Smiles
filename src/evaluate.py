@@ -249,6 +249,9 @@ def main(args):
     transform = transforms.Compose([normalize])
     reference_img2smi, _ = load_img2smi(args.reference_file)
     candidate_img2smi, count = load_img2smi(args.candidate_file)
+    candidate_keys = candidate_img2smi.keys()
+    reference_img2smi = {key: reference_img2smi[key] for key in candidate_keys if key in reference_img2smi}
+    print(len(reference_img2smi))
     percent_candidate_molecules_captioned =  1 - (count/len(reference_img2smi))
     reference_mols, _ = convert_smi_to_mol(reference_img2smi, args.reference_file)
     candidate_mols, count = convert_smi_to_mol(candidate_img2smi, args.candidate_file)
@@ -280,7 +283,7 @@ if __name__ == '__main__':
     parser.add_argument('--reference_file', type=str, default='exp/references_validation.txt', help='reference img2smi file which is a tsv with SMI\tIMG.PNG')
     parser.add_argument('--candidate_file', type=str, default='exp/osra_validation.txt', help='candidate img2smi file which is a tsv with SMI\tIMG.PNG')
     parser.add_argument('--output_file', type=str, default ='exp/osra_validation_results.txt', help='Filename where eval results will be written')
-    parser.add_argument('--tokenizer', default='tokenizers/tokenizer_vocab_20000.json', type=str, help='tokenizer to use in BLEU evaluation')
+    parser.add_argument('--tokenizer', default='data/tokenizers/tokenizer_vocab_20000.json', type=str, help='tokenizer to use in BLEU evaluation')
     parser.add_argument('--test_string', type=str, default='CC(C)CCNc1cnnc(NCCc2ccc(S(N)(=O)=O)cc2)n1', help='a SMILES string to test tokenizer with') 
     parser.add_argument('--img_size', default=256, type=int, help='Image size')
     args = parser.parse_args()

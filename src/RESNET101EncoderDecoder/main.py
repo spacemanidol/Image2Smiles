@@ -238,7 +238,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=32, type=int, help='Size of sampled batch')
     parser.add_argument('--cuda', action='store_true', help='use CUDA')
     parser.add_argument('--max_length', type=int, default=150, help='Max length of tokenized smiles')
-    parser.add_argument('--epochs', default=3, type=int, help='Train epochs')
+    parser.add_argument('--epochs', default=10, type=int, help='Train epochs')
     parser.add_argument('--image_path', default='molecule.png', type=str, help='Predict SMI of molecule expected SMI is Cc1nc(CN(C)c2ncc(C(=O)[O-])s2)n[nH]1')
     parser.add_argument('--do_train', action='store_true', help='Train model')
     parser.add_argument('--do_eval', action='store_true', help='Eval model')

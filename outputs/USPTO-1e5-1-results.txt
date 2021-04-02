@@ -1,0 +1,11 @@
+Reference File:outputs/USPTO-reference.txt
+Candidate File:outputs/USPTO-1e5-predictions-1.txt
+There are 898 examples being evaluatedPercent Captions Generated:0.9978
+Percent Valid SMI Generated:1.01
+Exact matches for Cannonical SMI strings:0
+Levenshtein Distance:71.5935
+BLEU-1 using data/tokenizers/tokenizer_vocab_20000.json tokenizer:0.0518
+MACCS Fingerprinting Tanimoto Similarity:0.2075
+RD Path Fingerprinting Tanimoto Similarity:0.2048
+Morgan Fingerprint Tanimoto Similarity:0.0844
+Image Distance:nan
