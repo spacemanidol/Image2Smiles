@@ -145,8 +145,8 @@ def predict_images(args, image_paths, model, device, idx2selfies, selfies2idx):
                 else:
                     cap_len += 1
             caption = caption[0][:cap_len].tolist()
-            selfies_caption = ' '.join([idx2selfies[i] for i in caption if i not in exclude ])
-            w.write("{}\t{}\n".format(sf.decoder(selfies_caption), args.image_path))
+            selfies_caption = ''.join([idx2selfies[i] for i in caption if i not in exclude ])
+            w.write("{}\t{}\n".format(sf.decoder(selfies_caption), image_path))
 
 def load_image(filename):
     image_paths = []
