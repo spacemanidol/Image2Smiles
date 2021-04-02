@@ -4,7 +4,7 @@ import argparse
 import Levenshtein
 import numpy as np
 from tqdm import tqdm
-from scipy.misc import imread, imresize
+from PIL import Image
 from rdkit import Chem, DataStructs
 from rdkit.Chem import MACCSkeys, AllChem, rdmolops, Draw
 from nltk.translate.bleu_score import sentence_bleu
@@ -204,17 +204,13 @@ def load_img(args, path, transform):
     """
     Load Image and transform
     """
-    img = imread(path)
-    if len(img.shape) == 2:
-        img = img[:, :, np.newaxis]
-        img = np.concatenate([img, img, img], axis=2)
-    img = imresize(img, (args.img_size, args.img_size))
-    img = img.transpose(2, 0, 1)
-    assert img.shape == (3, args.img_size, args.img_size)
-    assert np.max(img) <= 255
-    img  = torch.FloatTensor(img/255.)
-    img = transform(img)
-    img = torch.stack([img])
+    val_transform = tv.transforms.Compose([
+    tv.transforms.Lambda(under_max),
+    tv.transforms.ToTensor(),
+    tv.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    img = Image.open(path)
+    img = val_transform(img)
+    img = img.unsqueeze(0)
     return img
 
 def img_distance_eval(args, references, candidates, transform):
@@ -236,6 +232,7 @@ def img_distance_eval(args, references, candidates, transform):
             except:
                 pass
     return round(np.mean(scores),4)
+    
 def get_exact_match(references, candidates):
     """
     Exact Matc between two smiles

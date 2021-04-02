@@ -104,7 +104,7 @@ def predict_image(args, model, device, idx2selfies, selfies2idx):
         else:
             cap_len += 1
     caption = caption[0][:cap_len].tolist()
-    selfies_caption = ' '.join([idx2selfies[i] for i in caption if i not in exclude ])
+    selfies_caption = ''.join([idx2selfies[i] for i in caption if i not in exclude ])
     print("{}\t{}".format(sf.decoder(selfies_caption), args.image_path))
 
 @torch.no_grad()
@@ -122,9 +122,9 @@ def predict_images(args, image_paths, model, device, idx2selfies, selfies2idx):
     exclude.add(end_token_id)
     exclude.add(pad_token_id)
     vocab_size = len(selfies2idx)
-    with open(args.output_path, 'w') as w:
+    with open(args.output_file, 'w') as w:
         for image_path in image_paths:
-            image = Image.open(image_path)
+            image = Image.open(os.path.join(args.image_dir,image_path))
             image = val_transform(image)
             image = image.unsqueeze(0).to(device)
             caption, cap_mask = create_caption_and_mask(start_token_id, args.max_length-1)
@@ -175,10 +175,11 @@ def main(args):
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size)
     if args.load_model:
         checkpoint = torch.load(args.model_path)
-        model = model.load_state_dict(checkpoint['model'])
-        optimizer = optimizer.load_state_dict(checkpoint['optimizer'])
-        scheduler = scheduler.load_state_dict(checkpoint['scheduler'])
-        start_epoch = checkpoint['epoch'] + 1
+        model = checkpoint
+        #model = model.load_state_dict(checkpoint['model'])
+        #optimizer = optimizer.load_state_dict(checkpoint['optimizer'])
+        #scheduler = scheduler.load_state_dict(checkpoint['scheduler'])
+        #start_epoch = checkpoint['epoch'] + 1
     
     print("Model has {} parameters".format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
     model = model.to(device)
@@ -220,7 +221,8 @@ def main(args):
     if args.do_predict:
         if args.predict_list != 'None':
             image_paths = load_image(args.predict_list)
-            predict_image(args,image_paths, model, device, idx2selfies, selfies2idx)
+            print("Predicting smiles for {} images".format(len(image_paths)))
+            predict_images(args,image_paths, model, device, idx2selfies, selfies2idx)
         else:
             predict_image(args,model, device, idx2selfies, selfies2idx)
 
@@ -232,16 +234,17 @@ if __name__ == "__main__":
     parser.add_argument('--train_data_dir', default='data/training_images', type=str, help='Folder where training images are located')
     parser.add_argument('--eval_data_dir', default='data/validation_images', type=str, help='Folder where validation images are located')
     parser.add_argument('--seed', default=42, type=int, help='seed value')
+    parser.add_argument('--image_dir', default='data/uspto_images/', type=str, help='Location of images to evaluate')
     parser.add_argument('--batch_size', default=32, type=int, help='Size of sampled batch')
     parser.add_argument('--cuda', action='store_true', help='use CUDA')
     parser.add_argument('--max_length', type=int, default=150, help='Max length of tokenized smiles')
-    parser.add_argument('--epochs', default=1, type=int, help='Train epochs')
+    parser.add_argument('--epochs', default=3, type=int, help='Train epochs')
     parser.add_argument('--image_path', default='molecule.png', type=str, help='Predict SMI of molecule expected SMI is Cc1nc(CN(C)c2ncc(C(=O)[O-])s2)n[nH]1')
     parser.add_argument('--do_train', action='store_true', help='Train model')
     parser.add_argument('--do_eval', action='store_true', help='Eval model')
     parser.add_argument('--do_predict', action='store_true', help='Predict')
     parser.add_argument('--load_model', action='store_true', help='Load model')
-    parser.add_argument('--model_path', default='model_path', type=str, help='model path')
+    parser.add_argument('--model_path', default='model', type=str, help='model path')
     parser.add_argument('--eval_data_size', type=int, default=4096 ,help='How much of eval to run')
     parser.add_argument('--selfies_vocab', default='data/selfies.vocab', type=str, help='vocab mapping for selfies')
     parser.add_argument('--lr', default=1e-5, type=float, help='decoder learning rate')
