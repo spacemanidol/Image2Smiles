@@ -1,6 +1,6 @@
 data/uspto_images/
 wandb/
-
+tmp.png
 #
 *.smi
 *.selfies

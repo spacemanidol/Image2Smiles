@@ -1,0 +1,11 @@
+Reference File:data/evaluation_images/labels_short.smi
+Candidate File:outputs/evaluation-pyosra-predictions.txt
+There are 5000 examples being evaluatedPercent Captions Generated:0.2464
+Percent Valid SMI Generated:0.2238
+Exact matches for Cannonical SMI strings:0
+Levenshtein Distance:40.0502
+BLEU-1 using data/tokenizers/tokenizer_vocab_20000.json tokenizer:0.0121
+MACCS Fingerprinting Tanimoto Similarity:0.0678
+RD Path Fingerprinting Tanimoto Similarity:0.0385
+Morgan Fingerprint Tanimoto Similarity:0.0399
+Image Distance:nan
