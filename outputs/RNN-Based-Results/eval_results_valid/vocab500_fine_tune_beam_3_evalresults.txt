@@ -1,0 +1,10 @@
+Reference File:outputs/references_validation.txt
+Candidate File:outputs/vocab500_fine_tune_beam_3
+Percent Captions Generated:0.085
+Percent Valid SMI Generated:0.086
+Levenshtein Distance:41.423
+BLEU-1 using data/tokenizers/tokenizer_vocab_500.json tokenizer:0.0097
+MACCS Fingerprinting Tanimoto Similarity:0.0385
+RD Path Fingerprinting Tanimoto Similarity:0.0183
+Morgan Fingerprint Tanimoto Similarity:0.0162
+Image Distance:9.4737

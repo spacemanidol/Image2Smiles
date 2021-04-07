@@ -1,0 +1,10 @@
+Reference File:outputs/predictions_valid/references.tsv
+Candidate File:selfies_finetune_10_5_10_30
+Percent Captions Generated:1.0
+Percent Valid SMI Generated:0.534
+Levenshtein Distance:36.163
+BLEU-1 using data/tokenizers/tokenizer_vocab_2000.json tokenizer:0.0523
+MACCS Fingerprinting Tanimoto Similarity:0.1617
+RD Path Fingerprinting Tanimoto Similarity:0.0861
+Morgan Fingerprint Tanimoto Similarity:0.0442
+Image Distance:9.5189
