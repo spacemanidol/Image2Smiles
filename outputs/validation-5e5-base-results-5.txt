@@ -1,0 +1,11 @@
+Reference File:data/evaluation_images/labels_short.smi
+Candidate File:outputs/validation-5e5-base-predictions-5.txt
+There are 254 examples being evaluatedPercent Captions Generated:0.9173
+Percent Valid SMI Generated:19.6024
+Exact matches for Cannonical SMI strings:0
+Levenshtein Distance:40.3543
+BLEU-1 using data/tokenizers/tokenizer_vocab_20000.json tokenizer:0.0515
+MACCS Fingerprinting Tanimoto Similarity:0.3246
+RD Path Fingerprinting Tanimoto Similarity:0.2088
+Morgan Fingerprint Tanimoto Similarity:0.1062
+Image Distance:nan
