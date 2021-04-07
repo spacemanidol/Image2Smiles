@@ -170,16 +170,15 @@ def main(args):
     model = Caption(device)
     if args.cuda:
         pass #model = nn.DataParallel(model)
-    param_dicts = [{"params": [p for n, p in model.named_parameters()],"lr": args.lr,},]
+    if args.freeze_encoder:
+        for param in model.encoder[0].parameters():
+            param.requires_grad = False
+    param_dicts = [{"params": [p for n, p in model.named_parameters() if p.requires_grad],"lr": args.lr,},]
     optimizer = torch.optim.AdamW(param_dicts, lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size)
     if args.load_model:
         checkpoint = torch.load(args.model_path)
         model = checkpoint
-        #model = model.load_state_dict(checkpoint['model'])
-        #optimizer = optimizer.load_state_dict(checkpoint['optimizer'])
-        #scheduler = scheduler.load_state_dict(checkpoint['scheduler'])
-        #start_epoch = checkpoint['epoch'] + 1
     
     print("Model has {} parameters".format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
     model = model.to(device)
@@ -227,7 +226,8 @@ def main(args):
             predict_image(args,model, device, idx2selfies, selfies2idx)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Molecule Captioning via RESNET + ENCODER DECODER')  
+    parser = argparse.ArgumentParser(description='Molecule Captioning via RESNET + ENCODER DECODER')
+    parser.add_argument('--freeze_encoder', action='store_true', help='Prevent finetuning RESNET101')  
     parser.add_argument('--num_workers', default=8, type=int, help='Workers for data loading')
     parser.add_argument('--output_file', default='predictions.tsv', type=str, help='file name for predictions')
     parser.add_argument('--predict_list', default='None', type=str, help='Path of a file for images to predict')
@@ -238,7 +238,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=32, type=int, help='Size of sampled batch')
     parser.add_argument('--cuda', action='store_true', help='use CUDA')
     parser.add_argument('--max_length', type=int, default=150, help='Max length of tokenized smiles')
-    parser.add_argument('--epochs', default=10, type=int, help='Train epochs')
+    parser.add_argument('--epochs', default=5, type=int, help='Train epochs')
     parser.add_argument('--image_path', default='molecule.png', type=str, help='Predict SMI of molecule expected SMI is Cc1nc(CN(C)c2ncc(C(=O)[O-])s2)n[nH]1')
     parser.add_argument('--do_train', action='store_true', help='Train model')
     parser.add_argument('--do_eval', action='store_true', help='Eval model')

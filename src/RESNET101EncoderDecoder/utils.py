@@ -45,12 +45,6 @@ def load_selfies(filename):
 
 
 def save_model(model, optimizer, scheduler, epoch, args):
-    torch.save({
-                'model': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'scheduler': scheduler.state_dict(),
-                'epoch': epoch,
-                }, args.model_path + "_epoch_" + str(epoch) + ".ckpt")
     torch.save(model, args.model_path + "_epoch_" + str(epoch) + ".model")
                 
 def create_caption_and_mask(start_token, max_length):
